@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
  
 import "@thirdweb-dev/contracts/base/ERC1155Drop.sol";
  
-contract MyNFT is ERC1155Drop {
+contract PushColaDrop is ERC1155Drop {
     uint256 public nextAffiliateId = 1;
     mapping(uint256 => address) public affiliateOwners; // Asocia un ID de afiliado a una dirección
     mapping(address => uint256) public affiliateIDs;
