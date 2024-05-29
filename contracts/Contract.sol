@@ -95,6 +95,8 @@ contract PushColaLazyMint is ERC1155LazyMint {
         tokenOwnerAffiliates[_tokenId][_receiver] = affiliateId;
 
         _transferTokensOnClaim(_receiver, _tokenId, _quantity); // Mints tokens. Apply any state updates by overriding this function.
+
+
         emit TokensClaimed(msg.sender, _receiver, _tokenId, _quantity);
     }
 
@@ -114,8 +116,6 @@ contract PushColaLazyMint is ERC1155LazyMint {
         require(affiliateAddress != address(0), "Invalid affiliate address");
 
         _transferFeeToAffiliate(affiliateAddress, FEE, currency);
-
-         this.burn(owner, tokenId, 1);
 
         emit CouponRedeemed(owner, tokenId, affiliateId, FEE);
     }
