@@ -13,6 +13,7 @@ contract PushColaLazyMint is ERC1155LazyMint {
     mapping(uint256 => mapping(address => uint256)) public tokenOwnerAffiliates; // Maps token ID and owner to an affiliate ID
     using Counters for Counters.Counter;
     Counters.Counter private _tokenIds;
+    mapping(uint256 => mapping(address => uint256)) public redeemedQuantities;
 
     event CouponRedeemed(address indexed owner, uint256 indexed tokenId, uint256 affiliateId, uint256 fee);
 
@@ -55,7 +56,7 @@ contract PushColaLazyMint is ERC1155LazyMint {
     }
 
     function verifyClaim(address _claimer, uint256 _tokenId, uint256 _quantity) public view virtual override {
-        // Custom claim verification logic can be added here
+        require(this.balanceOf(_claimer, _tokenId) < 1, "Token already claimed by this wallet");
     }
 
     function _transferTokensOnClaim(
@@ -104,9 +105,12 @@ contract PushColaLazyMint is ERC1155LazyMint {
     function redeemCoupon(
         uint256 tokenId,
         address owner,
-        address currency
+        address currency,
+        uint256 quantity
     ) public payable nonReentrant {
         require(this.balanceOf(owner, tokenId) > 0, "Owner does not own this token");
+
+        require(redeemedQuantities[tokenId][owner] + quantity <= this.balanceOf(owner, tokenId), "Token quantity already redeemed");
 
 
         uint256 affiliateId = tokenOwnerAffiliates[tokenId][owner];
@@ -114,12 +118,12 @@ contract PushColaLazyMint is ERC1155LazyMint {
 
         address affiliateAddress = affiliateOwners[affiliateId];
         require(affiliateAddress != address(0), "Invalid affiliate address");
+        redeemedQuantities[tokenId][owner] += quantity;
 
         _transferFeeToAffiliate(affiliateAddress, FEE, currency);
 
         emit CouponRedeemed(owner, tokenId, affiliateId, FEE);
     }
-
 
     function _transferFeeToAffiliate(
         address affiliateAddress,
