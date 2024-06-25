@@ -37,22 +37,14 @@ contract PushColaLazyMint is ERC1155LazyMint {
         affiliateIDs[msg.sender] = newAffiliateId;
     }
 
+    /// @notice Retrieves the affiliate ID associated with a user's address.
+    /// @param _user The address of the user.
+    /// @return affiliateId The affiliate ID associated with the user address.
+    /// Returns 0 if the user is not registered as an affiliate.
     function getAffiliateIdByAddress(address _user) public view returns (uint256) {
-        return affiliateIDs[_user];
-    }
-
-    function getAffiliateIdByTokenAndOwner(uint256 tokenId, address owner) public view returns (uint256) {
-        return tokenOwnerAffiliates[tokenId][owner];
-    }
-
-    function getAffiliateAddressByTokenId(uint256 tokenId) public view returns (address) {
-        uint256 affiliateId = tokenOwnerAffiliates[tokenId][msg.sender]; // Retrieve the affiliate ID associated with the token ID and owner
-        require(affiliateId != 0, "Token ID and owner have no affiliate"); // Ensure that the token and owner have an affiliate associated with it
-
-        address affiliateAddress = affiliateOwners[affiliateId]; // Retrieve the affiliate address using the affiliate ID
-        require(affiliateAddress != address(0), "Affiliate ID does not have an associated address"); // Ensure the affiliate ID is valid
-
-        return affiliateAddress;
+       uint256 affiliateId = affiliateIDs[_user];
+       require(affiliateId != 0, "Address is not registered as an affiliate");
+       return affiliateId;
     }
 
     function verifyClaim(address _claimer, uint256 _tokenId, uint256 _quantity) public view virtual override {
