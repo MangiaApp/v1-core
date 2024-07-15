@@ -102,7 +102,7 @@ contract PushColaLazyMint is ERC1155LazyMint {
     ) public payable nonReentrant {
         require(this.balanceOf(owner, tokenId) > 0, "Owner does not own this token");
 
-        require(redeemedQuantities[tokenId][owner] + quantity <= this.balanceOf(owner, tokenId), "Token quantity already redeemed");
+        require(redeemedQuantities[tokenId][owner] + quantity < this.balanceOf(owner, tokenId), "Token quantity already redeemed");
 
 
         uint256 affiliateId = tokenOwnerAffiliates[tokenId][owner];
