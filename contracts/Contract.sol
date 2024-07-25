@@ -7,7 +7,7 @@ import "@thirdweb-dev/contracts/lib/CurrencyTransferLib.sol";
 
 contract PushColaLazyMint is ERC1155LazyMint {
     uint256 public nextAffiliateId = 1;
-    uint256 public constant FEE = 0.001 ether;
+    uint256 public constant FEE = 1000;
     mapping(uint256 => address) public affiliateOwners; // Associates an affiliate ID with an address
     mapping(address => uint256) public affiliateIDs;
     mapping(uint256 => mapping(address => uint256)) public tokenOwnerAffiliates; // Maps token ID and owner to an affiliate ID
@@ -89,7 +89,6 @@ contract PushColaLazyMint is ERC1155LazyMint {
 
         _transferTokensOnClaim(_receiver, _tokenId, _quantity); // Mints tokens. Apply any state updates by overriding this function.
 
-
         emit TokensClaimed(msg.sender, _receiver, _tokenId, _quantity);
     }
 
@@ -102,17 +101,21 @@ contract PushColaLazyMint is ERC1155LazyMint {
     ) public payable nonReentrant {
         require(this.balanceOf(owner, tokenId) > 0, "Owner does not own this token");
 
-        require(redeemedQuantities[tokenId][owner] + quantity < this.balanceOf(owner, tokenId), "Token quantity already redeemed");
+        uint256 redeemedQuantity = redeemedQuantities[tokenId][owner];
+        uint256 balance = this.balanceOf(owner, tokenId);
+        uint256 total = redeemedQuantity + quantity;
 
+        require(total < balance, "Token quantity already redeemed");
 
         uint256 affiliateId = tokenOwnerAffiliates[tokenId][owner];
         require(affiliateId != 0, "No affiliate associated with this token and owner");
 
         address affiliateAddress = affiliateOwners[affiliateId];
         require(affiliateAddress != address(0), "Invalid affiliate address");
-        redeemedQuantities[tokenId][owner] += quantity;
 
         _transferFeeToAffiliate(affiliateAddress, FEE, currency);
+
+        redeemedQuantities[tokenId][owner] += quantity;
 
         emit CouponRedeemed(owner, tokenId, affiliateId, FEE);
     }
