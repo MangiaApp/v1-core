@@ -5,7 +5,7 @@ import "@thirdweb-dev/contracts/base/ERC1155LazyMint.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
 import "@thirdweb-dev/contracts/lib/CurrencyTransferLib.sol";
 
-contract PushColaLazyMint is ERC1155LazyMint {
+contract PushColaLazyMint1 is ERC1155LazyMint {
     uint256 public nextAffiliateId = 1;
     uint256 public constant FEE = 1000;
     mapping(uint256 => address) public affiliateOwners; // Associates an affiliate ID with an address
@@ -15,7 +15,20 @@ contract PushColaLazyMint is ERC1155LazyMint {
     Counters.Counter private _tokenIds;
     mapping(uint256 => mapping(address => uint256)) public redeemedQuantities;
 
-    event CouponRedeemed(address indexed owner, uint256 indexed tokenId, uint256 affiliateId, uint256 fee);
+    event CouponRedeemed(address indexed owner, uint256 indexed tokenId, address affiliateAddress, address contractAddress,
+    uint256 timestamp);
+
+    event TokenClaimed(
+    address indexed claimer,
+    address indexed receiver,
+    uint256 indexed tokenId,
+    uint256 quantity,
+    address affiliateAddress,
+    uint256 fee,
+    address contractAddress,
+    uint256 timestamp,
+    address currency
+);
 
     constructor(
         address _defaultAdmin,
@@ -89,7 +102,15 @@ contract PushColaLazyMint is ERC1155LazyMint {
 
         _transferTokensOnClaim(_receiver, _tokenId, _quantity); // Mints tokens. Apply any state updates by overriding this function.
 
-        emit TokensClaimed(msg.sender, _receiver, _tokenId, _quantity);
+        emit TokenClaimed(
+        msg.sender,
+        _receiver,
+        _tokenId,
+        _quantity,
+        affiliateAddress,
+        address(this),
+        block.timestamp
+    );
     }
 
 
@@ -100,12 +121,12 @@ contract PushColaLazyMint is ERC1155LazyMint {
         uint256 quantity
     ) public payable nonReentrant {
         require(this.balanceOf(owner, tokenId) > 0, "Owner does not own this token");
-
+        
         uint256 redeemedQuantity = redeemedQuantities[tokenId][owner];
         uint256 balance = this.balanceOf(owner, tokenId);
         uint256 total = redeemedQuantity + quantity;
 
-        require(total < balance, "Token quantity already redeemed");
+        require(total <= balance, "Token quantity already redeemed");
 
         uint256 affiliateId = tokenOwnerAffiliates[tokenId][owner];
         require(affiliateId != 0, "No affiliate associated with this token and owner");
@@ -117,7 +138,7 @@ contract PushColaLazyMint is ERC1155LazyMint {
 
         redeemedQuantities[tokenId][owner] += quantity;
 
-        emit CouponRedeemed(owner, tokenId, affiliateId, FEE);
+        emit CouponRedeemed(owner, tokenId, affiliateAddress, FEE, address(this), block.timestamp, currency);
     }
 
     function _transferFeeToAffiliate(
