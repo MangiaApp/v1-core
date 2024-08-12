@@ -7,7 +7,7 @@ import "@thirdweb-dev/contracts/lib/CurrencyTransferLib.sol";
 
 contract PushColaLazyMint1 is ERC1155LazyMint {
     uint256 public nextAffiliateId = 1;
-    uint256 public constant FEE = 1000;
+    uint256 public FEE = 1000;
     mapping(uint256 => address) public affiliateOwners; // Associates an affiliate ID with an address
     mapping(address => uint256) public affiliateIDs;
     mapping(uint256 => mapping(address => uint256)) public tokenOwnerAffiliates; // Maps token ID and owner to an affiliate ID
@@ -15,8 +15,8 @@ contract PushColaLazyMint1 is ERC1155LazyMint {
     Counters.Counter private _tokenIds;
     mapping(uint256 => mapping(address => uint256)) public redeemedQuantities;
 
-    event CouponRedeemed(address indexed owner, uint256 indexed tokenId, address affiliateAddress, address contractAddress,
-    uint256 timestamp);
+    event CouponRedeemed(address indexed owner, uint256 indexed tokenId, address affiliateAddress, uint256 FEE, address contractAddress,
+    uint256 timestamp, address currency);
 
     event TokenClaimed(
     address indexed claimer,
@@ -24,10 +24,8 @@ contract PushColaLazyMint1 is ERC1155LazyMint {
     uint256 indexed tokenId,
     uint256 quantity,
     address affiliateAddress,
-    uint256 fee,
     address contractAddress,
-    uint256 timestamp,
-    address currency
+    uint256 timestamp
 );
 
     constructor(
@@ -40,6 +38,10 @@ contract PushColaLazyMint1 is ERC1155LazyMint {
 
     function setTokenOwnerAffiliate(uint256 tokenId, address owner, uint256 affiliateId) public {
         tokenOwnerAffiliates[tokenId][owner] = affiliateId;
+    }
+
+    function getFee() public view returns (uint256) {
+       return FEE;
     }
 
     function registerAffiliate() public {
@@ -58,6 +60,11 @@ contract PushColaLazyMint1 is ERC1155LazyMint {
        uint256 affiliateId = affiliateIDs[_user];
        require(affiliateId != 0, "Address is not registered as an affiliate");
        return affiliateId;
+    }
+
+     function updateFee(uint256 _dollarAmount) public onlyOwner {
+        require(_dollarAmount > 0, "Fee must be greater than zero");
+        FEE = _dollarAmount;
     }
 
     function verifyClaim(address _claimer, uint256 _tokenId, uint256 _quantity) public view virtual override {
@@ -85,24 +92,8 @@ contract PushColaLazyMint1 is ERC1155LazyMint {
         tokenOwnerAffiliates[_tokenId][_receiver] = affiliateId;
 
         _transferTokensOnClaim(_receiver, _tokenId, _quantity); // Mints tokens. Apply any state updates by overriding this function.
-        emit TokensClaimed(msg.sender, _receiver, _tokenId, _quantity);
-    }
 
-    function claim(
-        address _receiver,
-        uint256 _tokenId,
-        uint256 _quantity,
-        uint256 affiliateId
-    ) public payable nonReentrant {
-        require(_tokenId < nextTokenIdToMint(), "invalid id");
-        verifyClaim(msg.sender, _tokenId, _quantity); // Add your claim verification logic by overriding this function.
-        address affiliateAddress = affiliateOwners[affiliateId]; // Retrieve the affiliate address using the affiliate ID
-        require(affiliateAddress != address(0), "Affiliate ID does not have an associated address");
-        tokenOwnerAffiliates[_tokenId][_receiver] = affiliateId;
-
-        _transferTokensOnClaim(_receiver, _tokenId, _quantity); // Mints tokens. Apply any state updates by overriding this function.
-
-        emit TokenClaimed(
+            emit TokenClaimed(
         msg.sender,
         _receiver,
         _tokenId,
@@ -112,7 +103,6 @@ contract PushColaLazyMint1 is ERC1155LazyMint {
         block.timestamp
     );
     }
-
 
     function redeemCoupon(
         uint256 tokenId,
