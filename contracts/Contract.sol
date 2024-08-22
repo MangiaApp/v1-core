@@ -44,12 +44,12 @@ contract PushColaLazyMint1 is ERC1155LazyMint {
        return FEE;
     }
 
-    function registerAffiliate() public {
-        require(affiliateIDs[msg.sender] == 0, "Sender is already registered as affiliate");
+    function registerAffiliate(address user) public {
+        require(affiliateIDs[user] == 0, "Sender is already registered as affiliate");
         uint256 newAffiliateId = nextAffiliateId++;
 
-        affiliateOwners[newAffiliateId] = msg.sender;
-        affiliateIDs[msg.sender] = newAffiliateId;
+        affiliateOwners[newAffiliateId] = user;
+        affiliateIDs[user] = newAffiliateId;
     }
 
     /// @notice Retrieves the affiliate ID associated with a user's address.
