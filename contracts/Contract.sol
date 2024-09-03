@@ -86,7 +86,7 @@ contract PushColaLazyMint1 is ERC1155LazyMint {
         uint256 affiliateId
     ) public payable nonReentrant {
         require(_tokenId < nextTokenIdToMint(), "invalid id");
-        verifyClaim(msg.sender, _tokenId, _quantity); // Add your claim verification logic by overriding this function.
+        verifyClaim(_receiver, _tokenId, _quantity); // Add your claim verification logic by overriding this function.
         address affiliateAddress = affiliateOwners[affiliateId]; // Retrieve the affiliate address using the affiliate ID
         require(affiliateAddress != address(0), "Affiliate ID does not have an associated address");
         tokenOwnerAffiliates[_tokenId][_receiver] = affiliateId;
@@ -116,7 +116,7 @@ contract PushColaLazyMint1 is ERC1155LazyMint {
         uint256 balance = this.balanceOf(owner, tokenId);
         uint256 total = redeemedQuantity + quantity;
 
-        require(total <= balance, "Token quantity already redeemed");
+        // require(total <= balance, "Token quantity already redeemed");
 
         uint256 affiliateId = tokenOwnerAffiliates[tokenId][owner];
         require(affiliateId != 0, "No affiliate associated with this token and owner");
@@ -136,7 +136,7 @@ contract PushColaLazyMint1 is ERC1155LazyMint {
         uint256 fee,
         address currency
     ) internal {
-        require(fee > 0, "Fee must be greater than zero");
+        require(fee > 0, "Fee must be sIGOgreater than zero");
 
         if (currency == CurrencyTransferLib.NATIVE_TOKEN) {
             require(msg.value == fee, "Must send total fee");
