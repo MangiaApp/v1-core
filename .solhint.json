@@ -1,0 +1,7 @@
+{
+    "extends": "solhint:recommended",
+    "rules": {
+        "no-console": "off",
+        "no-global-import": "off"
+    }
+  }
