@@ -10,7 +10,7 @@ import "@thirdweb-dev/contracts/lib/CurrencyTransferLib.sol";
 ///         and coupon redemption with a fee mechanism.
 contract LazyMint is ERC1155, Ownable {
     /// @dev Fixed token ID for the single token in this collection
-    uint256 public constant TOKEN_ID = 1; 
+    uint256 public tokenId;
 
     /// @dev Tracks the total supply of the token
     uint256 public totalSupply;
@@ -19,7 +19,7 @@ contract LazyMint is ERC1155, Ownable {
     uint256 public maxSupply;
 
     /// @dev Fee amount for coupon redemption, denominated in native or specified currency
-    uint256 public fee = 1000;
+    uint256 public fee;
 
     /// @dev Base URI for metadata
     string private _tokenURI;
@@ -43,9 +43,8 @@ contract LazyMint is ERC1155, Ownable {
     mapping(uint256 => uint256) public redeemedTokenCount;
 
     /// @dev Expiration timestamp for claiming tokens
-    uint256 public claimExpiration;
-
-    /// @dev Expiration timestamp for redeeming coupons
+    uint256 public claimStart;
+    uint256 public claimEnd;
     uint256 public redeemExpiration;
 
     /// @dev Budget locked for paying affiliates
@@ -55,7 +54,7 @@ contract LazyMint is ERC1155, Ownable {
     address public currencyAddress;
 
     /// @notice Event emitted when a new affiliate is registered
-    event AffiliateRegistered(address indexed user, uint256 affiliateId, address contractAddress);
+    event AffiliateRegistered(address indexed user, uint256 affiliateId, address contractAddress, uint256 timestamp, uint256 tokenId);
 
     /// @notice Event emitted when a coupon is redeemed
     event CouponRedeemed(
@@ -103,30 +102,46 @@ contract LazyMint is ERC1155, Ownable {
     error InsufficientBudget();
     error InvalidWithdrawalAmount();
     error ExcessiveBudget();
+    error ClaimStartMustBeBeforeClaimEnd();
+    error ClaimEndMustBeBeforeRedeemExpiration();
+    error ClaimNotStarted();
 
     /// @dev Constructor to initialize the contract
     /// @param _uri The base URI for the token metadata
     /// @param _maxSupply The maximum number of tokens that can be minted
-    /// @param _claimExpiration Expiration timestamp for claiming tokens
+    /// @param _claimStart Expiration timestamp for claiming tokens
+    /// @param _claimEnd Expiration timestamp for claiming tokens
     /// @param _redeemExpiration Expiration timestamp for redeeming coupons
     /// @param _lockedBudget The budget locked for paying affiliates (optional)
     constructor(
         string memory _uri,
         uint256 _maxSupply,
-        uint256 _claimExpiration,
+        uint256 _claimStart,
+        uint256 _claimEnd,
         uint256 _redeemExpiration,
         uint256 _lockedBudget,
-        address _currencyAddress
+        address _currencyAddress,
+        uint256 _tokenId,
+        uint256 _fee
     ) ERC1155(_uri) Ownable(msg.sender) {
         if (_maxSupply <= 0) {
             revert MaxSupplyMustBeGreaterThanZero();
         }
+        if (_claimStart >= _claimEnd) {
+            revert ClaimStartMustBeBeforeClaimEnd();
+        }
+        if (_claimEnd >= _redeemExpiration) {
+            revert ClaimEndMustBeBeforeRedeemExpiration();
+        }
+        fee = _fee;
         _tokenURI = _uri;
         maxSupply = _maxSupply;
-        claimExpiration = _claimExpiration;
+        claimStart = _claimStart;
+        claimEnd = _claimEnd;
         redeemExpiration = _redeemExpiration;
         lockedBudget = _lockedBudget;
         currencyAddress = _currencyAddress;
+        tokenId = _tokenId;
     }
 
     /// @notice Allows users to register as an affiliate
@@ -136,7 +151,7 @@ contract LazyMint is ERC1155, Ownable {
             revert AlreadyRegisteredAsAffiliate();
         }
 
-        uint256 availableTokens = maxSupply - redeemedTokenCount[TOKEN_ID];
+        uint256 availableTokens = maxSupply - redeemedTokenCount[tokenId    ];
         uint256 requiredBudget = availableTokens * fee;
         if (lockedBudget < requiredBudget) {
             revert InsufficientBudget();
@@ -146,16 +161,19 @@ contract LazyMint is ERC1155, Ownable {
         affiliateOwners[affiliateId] = msg.sender;
         affiliateIDs[msg.sender] = affiliateId;
 
-        emit AffiliateRegistered(msg.sender, affiliateId, address(this));
+        emit AffiliateRegistered(msg.sender, affiliateId, address(this), block.timestamp, tokenId   );
     }
 
     /// @notice Verifies if a user is eligible to claim tokens
     /// @param _claimer Address of the user attempting to claim tokens
     function verifyClaim(address _claimer) public view {
-        if (balanceOf(_claimer, TOKEN_ID) > 0) {
+        if (balanceOf(_claimer, tokenId) > 0) {
             revert TokenAlreadyClaimed();
         }
-        if (block.timestamp > claimExpiration) {
+        if (block.timestamp < claimStart) {
+            revert ClaimNotStarted();
+        }
+        if (block.timestamp > claimEnd) {
             revert ClaimExpired();
         }
     }
@@ -174,13 +192,16 @@ contract LazyMint is ERC1155, Ownable {
 
         verifyClaim(_receiver);
 
-        address affiliateAddress = affiliateOwners[affiliateId];
-        if (affiliateAddress == address(0)) revert InvalidAffiliateID();
+        address affiliateAddress = address(0);
+        if (affiliateId != 0) {
+            affiliateAddress = affiliateOwners[affiliateId];
+            if (affiliateAddress == address(0)) revert InvalidAffiliateID();
+        }
 
-        _mint(_receiver, TOKEN_ID, _quantity, "");
+        _mint(_receiver, tokenId    , _quantity, "");
         totalSupply += _quantity;
 
-        emit TokenClaimed(msg.sender, _receiver, TOKEN_ID, _quantity, affiliateAddress, address(this), block.timestamp);
+        emit TokenClaimed(msg.sender, _receiver, tokenId    , _quantity, affiliateAddress, address(this), block.timestamp);
     }
 
     /// @notice Allows the contract owner to redeem coupons for token holders
@@ -188,18 +209,18 @@ contract LazyMint is ERC1155, Ownable {
     /// @param quantity Number of tokens being redeemed
     /// @dev Emits `CouponRedeemed` on successful redemption
     function redeemCoupon(address owner, uint256 quantity) public onlyOwner {
-        if (balanceOf(owner, TOKEN_ID) <= 0) revert OwnerDoesNotOwnToken();
+        if (balanceOf(owner, tokenId    ) <= 0) revert OwnerDoesNotOwnToken();
         if (block.timestamp > redeemExpiration) {
             revert RedeemExpired();
         }
 
-        uint256 redeemedQuantity = redeemedQuantities[TOKEN_ID][owner];
-        uint256 balance = balanceOf(owner, TOKEN_ID);
+        uint256 redeemedQuantity = redeemedQuantities[tokenId][owner];
+        uint256 balance = balanceOf(owner, tokenId);
         uint256 total = redeemedQuantity + quantity;
 
         if (total > balance) revert TokenQuantityAlreadyRedeemed();
 
-        uint256 affiliateId = tokenOwnerAffiliates[TOKEN_ID][owner];
+        uint256 affiliateId = tokenOwnerAffiliates[tokenId  ][owner];
 
         if (affiliateId != 0) {
             address affiliateAddress = affiliateOwners[affiliateId];
@@ -209,10 +230,10 @@ contract LazyMint is ERC1155, Ownable {
             CurrencyTransferLib.transferCurrency(currencyAddress, address(this), affiliateAddress, fee);
         }
 
-        redeemedQuantities[TOKEN_ID][owner] += quantity;
-        redeemedTokenCount[TOKEN_ID] += quantity;
+        redeemedQuantities[tokenId  ][owner] += quantity;
+        redeemedTokenCount[tokenId  ] += quantity;
 
-        emit CouponRedeemed(owner, TOKEN_ID, affiliateId != 0 ? affiliateOwners[affiliateId] : address(0), fee, address(this), block.timestamp, currencyAddress);
+        emit CouponRedeemed(owner, tokenId  , affiliateId != 0 ? affiliateOwners[affiliateId] : address(0), fee, address(this), block.timestamp, currencyAddress);
     }
 
     /// @notice Internal function to transfer the redemption fee to the affiliate
@@ -236,20 +257,25 @@ contract LazyMint is ERC1155, Ownable {
         fee = _dollarAmount;
     }
 
-    /// @notice Allows the owner to update the claim expiration date
-    /// @param _newClaimExpiration New expiration timestamp for claiming tokens
-    function updateClaimExpiration(uint256 _newClaimExpiration) public onlyOwner {
-        if (_newClaimExpiration <= block.timestamp) {
-            revert ClaimExpired();
+    /// @notice Allows the owner to update the claim dates
+    /// @param _newClaimStart New start timestamp for claiming tokens
+    /// @param _newClaimEnd New end timestamp for claiming tokens
+    function updateClaimDates(uint256 _newClaimStart, uint256 _newClaimEnd) public onlyOwner {
+        if (_newClaimStart >= _newClaimEnd) {
+            revert ClaimStartMustBeBeforeClaimEnd();
         }
-        claimExpiration = _newClaimExpiration;
+        if (_newClaimEnd >= redeemExpiration) {
+            revert ClaimEndMustBeBeforeRedeemExpiration();
+        }
+        claimStart = _newClaimStart;
+        claimEnd = _newClaimEnd;
     }
 
     /// @notice Allows the owner to update the redeem expiration date
     /// @param _newRedeemExpiration New expiration timestamp for redeeming coupons
     function updateRedeemExpiration(uint256 _newRedeemExpiration) public onlyOwner {
-        if (_newRedeemExpiration <= block.timestamp) {
-            revert RedeemExpired();
+        if (_newRedeemExpiration <= claimEnd) {
+            revert ClaimEndMustBeBeforeRedeemExpiration();
         }
         redeemExpiration = _newRedeemExpiration;
     }
@@ -262,7 +288,7 @@ contract LazyMint is ERC1155, Ownable {
     /// @notice Allows the owner to deposit a budget in USDC for paying affiliates
     /// @param amount Amount of USDC to deposit
     function depositBudget(uint256 amount) public payable onlyOwner {
-       uint256 availableTokens = maxSupply - redeemedTokenCount[TOKEN_ID];
+       uint256 availableTokens = maxSupply - redeemedTokenCount[tokenId ];
        uint256 requiredBudget = availableTokens * fee;
 
        // Ensure that the locked budget does not exceed the required budget
@@ -271,7 +297,7 @@ contract LazyMint is ERC1155, Ownable {
        }
 
        // Transfer the specified amount of currency to the contract
-       SafeERC20.safeTransferFrom(IERC20(currencyAddress), msg.sender, address(this), amount);
+       CurrencyTransferLib.transferCurrency(currencyAddress, msg.sender, address(this), amount);
        lockedBudget += amount;
 
        // Emit an event for successful budget locking
@@ -281,7 +307,7 @@ contract LazyMint is ERC1155, Ownable {
     /// @notice Returns the required budget based on available tokens and max supply
     /// @return requiredBudget The required budget in USDC
     function getRequiredBudget() public view returns (uint256) {
-        uint256 availableTokens = maxSupply - redeemedTokenCount[TOKEN_ID];
+        uint256 availableTokens = maxSupply - redeemedTokenCount[tokenId    ];
         uint256 requiredBudget = availableTokens * fee;
         return requiredBudget;
     }
@@ -289,7 +315,7 @@ contract LazyMint is ERC1155, Ownable {
     /// @notice Allows the owner to withdraw the remaining budget in USDC
     /// @param amount Amount of USDC to withdraw
     function withdrawBudget(uint256 amount) public onlyOwner {
-        uint256 availableTokens = maxSupply - redeemedTokenCount[TOKEN_ID];
+        uint256 availableTokens = maxSupply - redeemedTokenCount[tokenId    ];
         uint256 requiredBudget = availableTokens * fee;
 
         // Ensure that the withdrawal amount does not exceed the locked budget
@@ -304,7 +330,7 @@ contract LazyMint is ERC1155, Ownable {
 
         // Deduct the amount from the locked budget and transfer it to the owner
         lockedBudget -= amount;
-        IERC20(currencyAddress).transfer(msg.sender, amount);
+        CurrencyTransferLib.transferCurrency(currencyAddress, address(this), msg.sender, amount);
 
         // Emit an event for successful budget withdrawal
         emit BudgetWithdrawn(msg.sender, amount, address(this));

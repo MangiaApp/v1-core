@@ -12,3 +12,4 @@ const LazyMintFactoryModule = buildModule('LazyMintFactoryModule', (m) => {
 });
 
 export default LazyMintFactoryModule;
+

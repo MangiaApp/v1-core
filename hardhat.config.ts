@@ -2,7 +2,7 @@ import '@nomicfoundation/hardhat-toolbox-viem';
 require("@nomicfoundation/hardhat-verify");
 require('@nomiclabs/hardhat-ethers');
 
-const YOUR_PRIVATE_KEY = '10217e441ec6126766b047b22e5166c46ff1eb22a22226bb4cd7128e79f249e1';
+const YOUR_PRIVATE_KEY = '51c0c13204f5d04aa2062f4b2af07eaf0aebcf57fb966f749b84f7242a8842ba';
 
 const config = {
   solidity: '0.8.27',
