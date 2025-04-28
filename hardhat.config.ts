@@ -23,7 +23,16 @@ function validateEnvVars() {
 validateEnvVars();
 
 const config = {
-  solidity: '0.8.28',
+  solidity: {
+    version: '0.8.28',
+    settings: {
+      viaIR: true,
+      optimizer: {
+        enabled: true,
+        runs: 200
+      },
+    },
+  },
   sourcify: {
     enabled: true,
   },

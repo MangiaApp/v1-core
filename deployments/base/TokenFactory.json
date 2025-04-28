@@ -1,7 +1,7 @@
 {
-  "CouponImplementation": "0x43D8F1f08192a6A254cC81b54448d66097d19d2B",
-  "TokenFactory": "0xAB87d50Dd8DAb6ced5CC442c260483A1Fc95E29c",
-  "deployer": "0x3011Ab67747d1CfA5Cc6bD890715AFDE99d5b9E4",
-  "timestamp": "2025-04-02T15:19:09.759Z",
+  "CouponImplementation": "0xC7C3DAB422A4d89d492e59B50097fDAc464De307",
+  "TokenFactory": "0x2C8Ea2AbeAE3a3b9AbC177c707A3a881beF1F42B",
+  "deployer": "0x181fca4a238c21499F62364755f9b271c572e53b",
+  "timestamp": "2025-04-10T14:49:24.281Z",
   "chainId": "8453"
 }

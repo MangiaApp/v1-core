@@ -131,12 +131,26 @@ contract TokenFactory is Ownable {
         return projectId;
     }
 
+    /// @notice Predicts the address where a new Coupon contract will be deployed
+    /// @param _salt A unique salt for deterministic deployment
+    /// @return The predicted address of the Coupon contract
+    function predictCouponAddress(
+        bytes32 _salt
+    ) public view returns (address) {
+        return Clones.predictDeterministicAddress(
+            implementation,
+            _salt,
+            address(this)
+        );
+    }
+
     /// @notice Deploys a new LazyMint contract with the specified parameters using cloning
     /// @param _projectId The ID of the project this coupon belongs to (pass NO_PROJECT_ID if no ID is provided)
     /// @param _projectName If _projectId equals NO_PROJECT_ID, this will be used as the name for a new project
     /// @param _uri The metadata URI for the LazyMint contract.
     /// @param _maxSupply The maximum supply of tokens allowed in the LazyMint contract.
     /// @param _fee The fee amount for coupon redemption. Required if _lockedBudget > 0.
+    /// @param _salt A unique salt for deterministic deployment
     /// @return The address of the newly deployed LazyMint contract.
     function createLazyMint(
         uint256 _projectId,
@@ -148,7 +162,8 @@ contract TokenFactory is Ownable {
         uint256 _redeemExpiration,
         uint256 _lockedBudget,
         address _currencyAddress,
-        uint256 _fee
+        uint256 _fee,
+        bytes32 _salt
     ) external payable returns (address) {
         if (implementation == address(0)) {
             revert ImplementationNotSet();
@@ -180,8 +195,8 @@ contract TokenFactory is Ownable {
             revert FeeMustBeSetWithBudget();
         }
 
-        // Clone the LazyMint implementation
-        address lazyMintAddress = Clones.clone(implementation);
+        // Deploy the clone deterministically
+        address lazyMintAddress = Clones.cloneDeterministic(implementation, _salt);
         
         // Initialize the clone with ETH if needed
         Coupon(payable(lazyMintAddress)).initialize{value: msg.value}(

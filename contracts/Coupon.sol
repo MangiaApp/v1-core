@@ -25,17 +25,8 @@ contract Coupon is Initializable, ERC1155Upgradeable, OwnableUpgradeable {
     /// @dev Base URI for metadata
     string private _tokenURI;
 
-    /// @dev Counter for generating unique affiliate IDs
-    uint256 public nextAffiliateId;
-
-    /// @dev Mapping from affiliate ID to affiliate owner address
-    mapping(uint256 => address) public affiliateOwners;
-
-    /// @dev Mapping from affiliate owner address to affiliate ID
-    mapping(address => uint256) public affiliateIDs;
-
     /// @dev Mapping to track token affiliates for owners
-    mapping(uint256 => mapping(address => uint256)) public tokenOwnerAffiliates;
+    mapping(uint256 => mapping(address => address)) public tokenOwnerAffiliates;
 
     /// @dev Mapping to track redeemed token quantities
     mapping(uint256 => mapping(address => uint256)) public redeemedQuantities;
@@ -175,7 +166,7 @@ contract Coupon is Initializable, ERC1155Upgradeable, OwnableUpgradeable {
                     revert MustSendTotalFee();
                 }
                 // Transferir tokens ERC20 del inicializador al contrato
-                CurrencyTransferLib.transferCurrency(_currencyAddress, msg.sender, address(this), _lockedBudget);
+                CurrencyTransferLib.transferCurrency(_currencyAddress, _owner, address(this), _lockedBudget);
             }
         } else {
             // Si no hay presupuesto, no debe enviarse ETH
@@ -193,7 +184,6 @@ contract Coupon is Initializable, ERC1155Upgradeable, OwnableUpgradeable {
         lockedBudget = _lockedBudget;
         currencyAddress = _currencyAddress;
         tokenId = _tokenId;
-        nextAffiliateId = 1;
         totalSupply = 0;
         tokensWithAffiliates = 0;
     }
@@ -264,6 +254,9 @@ contract Coupon is Initializable, ERC1155Upgradeable, OwnableUpgradeable {
             // Incrementar referencias del afiliado
             affiliateReferrals[affiliateAddress] += 1;
             tokensWithAffiliates += 1;
+            
+            // Store the affiliate address directly
+            tokenOwnerAffiliates[tokenId][msg.sender] = affiliateAddress;
         }
 
         _mint(msg.sender, tokenId, 1, "");
@@ -292,12 +285,10 @@ contract Coupon is Initializable, ERC1155Upgradeable, OwnableUpgradeable {
         
         if (redeemedQuantity > 0) revert TokenQuantityAlreadyRedeemed();
 
-        uint256 affiliateId = tokenOwnerAffiliates[tokenId][tokenOwner];
-        address affiliateAddress = address(0);
+        address affiliateAddress = tokenOwnerAffiliates[tokenId][tokenOwner];
 
-        if (affiliateId != 0) {
-            affiliateAddress = affiliateOwners[affiliateId];
-            if (affiliateAddress == address(0)) revert InvalidAffiliateAddress();
+        if (affiliateAddress != address(0)) {
+            if (!isAffiliate[affiliateAddress]) revert InvalidAffiliateAddress();
             if (lockedBudget < fee) revert InsufficientBudget();
             
             // Decrementar tokens con afiliados cuando se redimen
