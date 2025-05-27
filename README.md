@@ -11,6 +11,7 @@ This project implements a smart contract system for lazy minting ERC1155 tokens 
 - **Coupon Redemption** with configurable fees
 - **Time-bound Claims** with customizable start and end dates
 - **Budget Management** for affiliate payments
+- **IPFS Metadata Storage** using Pinata for coupon data
 
 ## Contract Conditions
 
@@ -68,6 +69,9 @@ npx hardhat ignition deploy ignition/modules/TokenFactory.ts --network localhost
 # Or use the Makefile shortcut
 make deploy-factory
 
+# Create a coupon with IPFS metadata
+npx hardhat run scripts/createCoupon.js --network localhost
+
 # Foundry Commands
 # Run tests with Foundry (faster execution)
 forge test
@@ -85,5 +89,24 @@ forge build
 - `/scripts`: Deployment and interaction scripts
 - `/ignition`: Hardhat Ignition deployment modules
 - `/deployments`: Records of deployed contracts by network
+- `/coupons`: Generated coupon data and transaction records
+
+## Environment Variables
+
+Create a `.env` file in the contract directory with the following variables:
+
+```
+# Network settings
+FACTORY_ADDRESS=0x1234567890123456789012345678901234567890
+
+# Pinata IPFS
+PINATA_JWT=your_pinata_jwt_here
+PINATA_GATEWAY=your_gateway_domain.mypinata.cloud
+```
+
+To get your Pinata credentials:
+1. Sign up on [Pinata](https://app.pinata.cloud/)
+2. Generate an API key with the "Admin" role
+3. Copy the JWT token and gateway domain to your .env file
 
 

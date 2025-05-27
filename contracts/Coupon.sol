@@ -79,7 +79,8 @@ contract Coupon is Initializable, ERC1155Upgradeable, OwnableUpgradeable {
         uint256 indexed tokenId,
         address affiliateAddress,
         address contractAddress,
-        uint256 timestamp
+        uint256 timestamp,
+        string _tokenURI
     );
 
     /// @notice Event emitted when budget is locked
@@ -268,7 +269,8 @@ contract Coupon is Initializable, ERC1155Upgradeable, OwnableUpgradeable {
             tokenId, 
             affiliateAddress, 
             address(this), 
-            block.timestamp
+            block.timestamp,
+            _tokenURI
         );
     }
 

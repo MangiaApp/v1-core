@@ -3,12 +3,12 @@ pragma solidity ^0.8.28;
 
 import "../lib/forge-std/src/Test.sol";
 import "../lib/forge-std/src/console.sol";
-import "../contracts/TokenFactory.sol";
+import "../contracts/LazyMintFactory.sol";
 import "../contracts/Coupon.sol";
 import "@thirdweb-dev/contracts/lib/CurrencyTransferLib.sol";
 
 contract TokenFactoryTest is Test {
-    TokenFactory public factory;
+    LazyMintFactory public factory;
     Coupon public implementation;
     address public owner;
     address public user;
@@ -28,7 +28,7 @@ contract TokenFactoryTest is Test {
         implementation = new Coupon();
         
         // Deploy the factory with the implementation
-        factory = new TokenFactory(address(implementation));
+        factory = new LazyMintFactory(address(implementation));
         
         vm.stopPrank();
     }
