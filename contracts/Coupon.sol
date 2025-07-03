@@ -7,52 +7,71 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@thirdweb-dev/contracts/lib/CurrencyTransferLib.sol";
 
 /// @title Coupon Contract
-/// @notice This contract allows lazy minting of ERC1155 tokens, affiliate registration, 
-///         and coupon redemption with a fee mechanism. It's designed to be immutable.
+/// @notice This contract allows lazy minting of ERC1155 tokens with multiple tokenIds, 
+///         affiliate registration, and coupon redemption with a fee mechanism. 
+///         Each contract represents a project with multiple coupons.
 contract Coupon is Initializable, ERC1155Upgradeable, OwnableUpgradeable {
-    /// @dev Fixed token ID for the single token in this collection
-    uint256 public tokenId;
+    // Contract-level metadata URI (Project info stored on IPFS)
+    string public projectMetadataURI;
+    
+    /// @dev Counter for tokenIds - starts at 0 and increments for each new coupon
+    uint256 public nextTokenId;
 
-    /// @dev Tracks the total supply of the token
-    uint256 public totalSupply;
+    /// @dev Per-token data for each coupon
+    struct TokenData {
+        uint256 totalSupply;
+        uint256 maxSupply;
+        uint256 claimStart;
+        uint256 claimEnd;
+        uint256 redeemExpiration;
+        uint256 fee;
+        uint256 lockedBudget;
+        uint256 tokensWithAffiliates;
+        string uri;
+        bool exists;
+    }
 
-    /// @dev Maximum number of tokens that can be minted
-    uint256 public maxSupply;
+    /// @dev Mapping from tokenId to its data
+    mapping(uint256 => TokenData) public tokenData;
 
-    /// @dev Fee amount for coupon redemption, denominated in native or specified currency
-    uint256 public fee;
-
-    /// @dev Base URI for metadata
-    string private _tokenURI;
-
-    /// @dev Mapping to track token affiliates for owners
+    /// @dev Mapping to track token affiliates for owners: tokenId => owner => affiliate
     mapping(uint256 => mapping(address => address)) public tokenOwnerAffiliates;
 
-    /// @dev Mapping to track redeemed token quantities
+    /// @dev Mapping to track redeemed token quantities: tokenId => owner => quantity
     mapping(uint256 => mapping(address => uint256)) public redeemedQuantities;
 
-    /// @dev Mapping to track the count of redeemed token quantities
+    /// @dev Mapping to track the count of redeemed tokens: tokenId => count
     mapping(uint256 => uint256) public redeemedTokenCount;
-
-    /// @dev Expiration timestamp for claiming tokens
-    uint256 public claimStart;
-    uint256 public claimEnd;
-    uint256 public redeemExpiration;
-
-    /// @dev Budget locked for paying affiliates
-    uint256 public lockedBudget;
 
     /// @dev Address of the currency used for fee payments
     address public currencyAddress;
 
-    /// @dev Add a new state variable to track tokens claimed with affiliates
-    uint256 public tokensWithAffiliates;
-
     /// @dev Mapping to track if a wallet is an affiliate
     mapping(address => bool) public isAffiliate;
 
-    /// @dev Mapping to track affiliate referrals
+    /// @dev Mapping to track affiliate referrals per affiliate
     mapping(address => uint256) public affiliateReferrals;
+
+    /// @notice Event emitted when a new coupon (tokenId) is created
+    event CouponCreated(
+        uint256 indexed tokenId,
+        string uri,
+        uint256 maxSupply,
+        uint256 claimStart,
+        uint256 claimEnd,
+        uint256 redeemExpiration,
+        uint256 fee,
+        uint256 lockedBudget,
+        address contractAddress,
+        uint256 timestamp
+    );
+
+    /// @notice Event emitted when project metadata is updated
+    event ProjectMetadataUpdated(
+        string metadataURI,
+        address contractAddress,
+        uint256 timestamp
+    );
 
     /// @notice Event emitted when a new affiliate is registered
     event AffiliateRegistered(
@@ -112,6 +131,8 @@ contract Coupon is Initializable, ERC1155Upgradeable, OwnableUpgradeable {
     error ClaimNotStarted();
     error AlreadyInitialized();
     error InvalidCurrencyAmount();
+    error TokenDoesNotExist();
+    error InvalidTokenId();
 
     /// @dev Constructor is disabled in favor of initialize
     /// @custom:oz-upgrades-unsafe-allow constructor
@@ -120,85 +141,182 @@ contract Coupon is Initializable, ERC1155Upgradeable, OwnableUpgradeable {
     }
 
     /// @dev initialize replaces the constructor for upgradeable contracts
-    /// @param _uri The base URI for the token metadata
-    /// @param _maxSupply The maximum number of tokens that can be minted
-    /// @param _claimStart Expiration timestamp for claiming tokens
-    /// @param _claimEnd Expiration timestamp for claiming tokens
-    /// @param _redeemExpiration Expiration timestamp for redeeming coupons
-    /// @param _lockedBudget The budget locked for paying affiliates (optional)
+    /// @param _projectMetadataURI URI pointing to project metadata on IPFS
+    /// @param _currencyAddress Address of the currency used for fee payments
+    /// @param _owner Owner of the contract
+    /// @param _firstCouponData Data for the first coupon to be created automatically
     function initialize(
-        string memory _uri,
-        uint256 _maxSupply,
-        uint256 _claimStart,
-        uint256 _claimEnd,
-        uint256 _redeemExpiration,
-        uint256 _lockedBudget,
+        string memory _projectMetadataURI,
         address _currencyAddress,
-        uint256 _tokenId,
-        uint256 _fee,
-        address _owner
+        address _owner,
+        FirstCouponData memory _firstCouponData
     ) public payable initializer {
-        __ERC1155_init(_uri);
+        __ERC1155_init("");
         __Ownable_init(_owner);
         
-        if (_maxSupply <= 0) {
+        projectMetadataURI = _projectMetadataURI;
+        currencyAddress = _currencyAddress;
+        nextTokenId = 0;
+        
+        // Create the first coupon automatically
+        _createCoupon(_firstCouponData);
+        
+        emit ProjectMetadataUpdated(
+            _projectMetadataURI,
+            address(this),
+            block.timestamp
+        );
+    }
+
+    /// @dev Struct for first coupon data to avoid stack too deep
+    struct FirstCouponData {
+        string uri;
+        uint256 maxSupply;
+        uint256 claimStart;
+        uint256 claimEnd;
+        uint256 redeemExpiration;
+        uint256 fee;
+        uint256 lockedBudget;
+    }
+
+    /// @dev Internal function to create a new coupon
+    function _createCoupon(FirstCouponData memory _data) internal {
+        if (_data.maxSupply <= 0) {
             revert MaxSupplyMustBeGreaterThanZero();
         }
-        if (_claimStart >= _claimEnd) {
+        if (_data.claimStart >= _data.claimEnd) {
             revert ClaimStartMustBeBeforeClaimEnd();
         }
-        if (_claimEnd >= _redeemExpiration) {
+        if (_data.claimEnd >= _data.redeemExpiration) {
             revert ClaimEndMustBeBeforeRedeemExpiration();
         }
-        if (_fee > 0 && _lockedBudget < _fee * _maxSupply) {
+        if (_data.fee > 0 && _data.lockedBudget < _data.fee * _data.maxSupply) {
             revert InsufficientBudget();
         }
         
-        // Validar y transferir la moneda apropiada para el presupuesto inicial
-        if (_lockedBudget > 0) {
-            if (_currencyAddress == CurrencyTransferLib.NATIVE_TOKEN) {
-                // Para ETH, verificar que el valor enviado coincide con el presupuesto
-                if (msg.value != _lockedBudget) {
+        // Handle budget transfer for the first coupon
+        if (_data.lockedBudget > 0) {
+            if (currencyAddress == CurrencyTransferLib.NATIVE_TOKEN) {
+                if (msg.value != _data.lockedBudget) {
                     revert MustSendTotalFee();
                 }
             } else {
-                // Para tokens ERC20, no debe enviarse ETH
                 if (msg.value > 0) {
                     revert MustSendTotalFee();
                 }
-                // Transferir tokens ERC20 del inicializador al contrato
-                CurrencyTransferLib.transferCurrency(_currencyAddress, _owner, address(this), _lockedBudget);
+                CurrencyTransferLib.transferCurrency(currencyAddress, owner(), address(this), _data.lockedBudget);
             }
         } else {
-            // Si no hay presupuesto, no debe enviarse ETH
             if (msg.value > 0) {
                 revert MustSendTotalFee();
             }
         }
         
-        fee = _fee;
-        _tokenURI = _uri;
-        maxSupply = _maxSupply;
-        claimStart = _claimStart;
-        claimEnd = _claimEnd;
-        redeemExpiration = _redeemExpiration;
-        lockedBudget = _lockedBudget;
-        currencyAddress = _currencyAddress;
-        tokenId = _tokenId;
-        totalSupply = 0;
-        tokensWithAffiliates = 0;
+        uint256 tokenId = nextTokenId;
+        
+        tokenData[tokenId] = TokenData({
+            totalSupply: 0,
+            maxSupply: _data.maxSupply,
+            claimStart: _data.claimStart,
+            claimEnd: _data.claimEnd,
+            redeemExpiration: _data.redeemExpiration,
+            fee: _data.fee,
+            lockedBudget: _data.lockedBudget,
+            tokensWithAffiliates: 0,
+            uri: _data.uri,
+            exists: true
+        });
+        
+        nextTokenId++;
+        
+        emit CouponCreated(
+            tokenId,
+            _data.uri,
+            _data.maxSupply,
+            _data.claimStart,
+            _data.claimEnd,
+            _data.redeemExpiration,
+            _data.fee,
+            _data.lockedBudget,
+            address(this),
+            block.timestamp
+        );
     }
 
-    /// @dev Calculates the required budget based on tokens with affiliates and claim patterns
+    /// @notice Creates a new coupon (tokenId) in this project
+    /// @param _uri The metadata URI for the coupon
+    /// @param _maxSupply The maximum supply of tokens for this coupon
+    /// @param _claimStart When claiming starts
+    /// @param _claimEnd When claiming ends
+    /// @param _redeemExpiration When redemption expires
+    /// @param _fee Fee for redemption
+    /// @param _lockedBudget Budget to lock for affiliate payments
+    function createCoupon(
+        string memory _uri,
+        uint256 _maxSupply,
+        uint256 _claimStart,
+        uint256 _claimEnd,
+        uint256 _redeemExpiration,
+        uint256 _fee,
+        uint256 _lockedBudget
+    ) public payable onlyOwner returns (uint256) {
+        FirstCouponData memory couponData = FirstCouponData({
+            uri: _uri,
+            maxSupply: _maxSupply,
+            claimStart: _claimStart,
+            claimEnd: _claimEnd,
+            redeemExpiration: _redeemExpiration,
+            fee: _fee,
+            lockedBudget: _lockedBudget
+        });
+        
+        uint256 currentTokenId = nextTokenId;
+        _createCoupon(couponData);
+        return currentTokenId;
+    }
+
+    /// @notice Updates the project metadata URI
+    /// @param _metadataURI New project metadata URI
+    function updateProjectMetadata(
+        string memory _metadataURI
+    ) public onlyOwner {
+        projectMetadataURI = _metadataURI;
+        
+        emit ProjectMetadataUpdated(
+            _metadataURI,
+            address(this),
+            block.timestamp
+        );
+    }
+
+    /// @notice Returns the URI for a specific token
+    /// @param _tokenId The token ID to get URI for
+    /// @return URI string for the token
+    function uri(uint256 _tokenId) public view override returns (string memory) {
+        if (!tokenData[_tokenId].exists) {
+            revert TokenDoesNotExist();
+        }
+        return tokenData[_tokenId].uri;
+    }
+
+    /// @notice Updates the URI for a specific token
+    /// @param _tokenId The token ID to update
+    /// @param _newURI New URI to set
+    function setTokenURI(uint256 _tokenId, string memory _newURI) public onlyOwner {
+        if (!tokenData[_tokenId].exists) {
+            revert TokenDoesNotExist();
+        }
+        tokenData[_tokenId].uri = _newURI;
+    }
+
+    /// @dev Calculates the required budget for a specific token based on tokens with affiliates
+    /// @param _tokenId The token ID to calculate budget for
     /// @return The amount of budget required to cover potential affiliate payments
-    function calculateRequiredBudget() public view returns (uint256) {
-        // Presupuesto necesario para tokens ya reclamados con afiliados (y aún no redimidos)
-        uint256 currentLockedBudgetNeeded = tokensWithAffiliates * fee;
-        
-        // Ya no reservamos presupuesto adicional para futuros afiliados
-        // Los nuevos afiliados solo podrán registrarse si hay suficiente presupuesto disponible
-        
-        return currentLockedBudgetNeeded;
+    function calculateRequiredBudget(uint256 _tokenId) public view returns (uint256) {
+        if (!tokenData[_tokenId].exists) {
+            revert TokenDoesNotExist();
+        }
+        return tokenData[_tokenId].tokensWithAffiliates * tokenData[_tokenId].fee;
     }
 
     /// @notice Allows users to register as an affiliate
@@ -206,11 +324,6 @@ contract Coupon is Initializable, ERC1155Upgradeable, OwnableUpgradeable {
     function registerAffiliate() public {
         if (isAffiliate[msg.sender]) {
             revert AlreadyRegisteredAsAffiliate();
-        }
-
-        // Verificar presupuesto disponible
-        if (lockedBudget < fee) {
-            revert InsufficientBudget();
         }
 
         isAffiliate[msg.sender] = true;
@@ -222,113 +335,116 @@ contract Coupon is Initializable, ERC1155Upgradeable, OwnableUpgradeable {
         );
     }
 
-    /// @notice Verifies if a user is eligible to claim tokens
+    /// @notice Verifies if a user is eligible to claim tokens for a specific tokenId
     /// @param _claimer Address of the user attempting to claim tokens
-    function verifyClaim(address _claimer) public view {
-        if (balanceOf(_claimer, tokenId) > 0) {
+    /// @param _tokenId The token ID to claim
+    function verifyClaim(address _claimer, uint256 _tokenId) public view {
+        if (!tokenData[_tokenId].exists) {
+            revert TokenDoesNotExist();
+        }
+        if (balanceOf(_claimer, _tokenId) > 0) {
             revert TokenAlreadyClaimed();
         }
-        if (block.timestamp < claimStart) {
+        if (block.timestamp < tokenData[_tokenId].claimStart) {
             revert ClaimNotStarted();
         }
-        if (block.timestamp > claimEnd) {
+        if (block.timestamp > tokenData[_tokenId].claimEnd) {
             revert ClaimExpired();
         }
     }
 
-    /// @notice Allows users to claim tokens
+    /// @notice Allows users to claim tokens for a specific tokenId
+    /// @param _tokenId The token ID to claim
     /// @param affiliateAddress The affiliate address associated with the claim (optional)
     /// @dev Emits `TokenClaimed` on successful claim
-    function customClaim(address affiliateAddress) public payable {
-        if (totalSupply + 1 > maxSupply) {
+    function customClaim(uint256 _tokenId, address affiliateAddress) public {
+        if (!tokenData[_tokenId].exists) {
+            revert TokenDoesNotExist();
+        }
+        if (tokenData[_tokenId].totalSupply + 1 > tokenData[_tokenId].maxSupply) {
             revert ExceedsMaxSupply();
         }
 
-        verifyClaim(msg.sender);
+        verifyClaim(msg.sender, _tokenId);
 
         if (affiliateAddress != address(0)) {
             if (!isAffiliate[affiliateAddress]) revert InvalidAffiliateAddress();
             if (affiliateAddress == msg.sender) revert InvalidAffiliateAddress();
             
-            if (lockedBudget < fee) revert InsufficientBudget();
+            if (tokenData[_tokenId].lockedBudget < tokenData[_tokenId].fee) revert InsufficientBudget();
             
-            // Incrementar referencias del afiliado
+            // Increment affiliate referrals and tokens with affiliates
             affiliateReferrals[affiliateAddress] += 1;
-            tokensWithAffiliates += 1;
+            tokenData[_tokenId].tokensWithAffiliates += 1;
             
-            // Store the affiliate address directly
-            tokenOwnerAffiliates[tokenId][msg.sender] = affiliateAddress;
+            // Store the affiliate address
+            tokenOwnerAffiliates[_tokenId][msg.sender] = affiliateAddress;
         }
 
-        _mint(msg.sender, tokenId, 1, "");
-        totalSupply += 1;
+        _mint(msg.sender, _tokenId, 1, "");
+        tokenData[_tokenId].totalSupply += 1;
 
         emit TokenClaimed(
             msg.sender, 
             msg.sender, 
-            tokenId, 
+            _tokenId, 
             affiliateAddress, 
             address(this), 
             block.timestamp,
-            _tokenURI
+            tokenData[_tokenId].uri
         );
     }
 
     /// @notice Allows the contract owner to redeem coupons for token holders
+    /// @param _tokenId The token ID to redeem
     /// @param tokenOwner Address of the token holder
     /// @dev Emits `CouponRedeemed` on successful redemption
-    function redeemCoupon(address tokenOwner) public onlyOwner {
-        if (balanceOf(tokenOwner, tokenId) <= 0) revert OwnerDoesNotOwnToken();
-        if (block.timestamp > redeemExpiration) {
+    function redeemCoupon(uint256 _tokenId, address tokenOwner) public onlyOwner {
+        if (!tokenData[_tokenId].exists) {
+            revert TokenDoesNotExist();
+        }
+        if (balanceOf(tokenOwner, _tokenId) <= 0) revert OwnerDoesNotOwnToken();
+        if (block.timestamp > tokenData[_tokenId].redeemExpiration) {
             revert RedeemExpired();
         }
 
-        uint256 redeemedQuantity = redeemedQuantities[tokenId][tokenOwner];
+        uint256 redeemedQuantity = redeemedQuantities[_tokenId][tokenOwner];
         
         if (redeemedQuantity > 0) revert TokenQuantityAlreadyRedeemed();
 
-        address affiliateAddress = tokenOwnerAffiliates[tokenId][tokenOwner];
+        address affiliateAddress = tokenOwnerAffiliates[_tokenId][tokenOwner];
 
         if (affiliateAddress != address(0)) {
             if (!isAffiliate[affiliateAddress]) revert InvalidAffiliateAddress();
-            if (lockedBudget < fee) revert InsufficientBudget();
+            if (tokenData[_tokenId].lockedBudget < tokenData[_tokenId].fee) revert InsufficientBudget();
             
-            // Decrementar tokens con afiliados cuando se redimen
-            tokensWithAffiliates -= 1;
+            // Decrement tokens with affiliates and locked budget
+            tokenData[_tokenId].tokensWithAffiliates -= 1;
+            tokenData[_tokenId].lockedBudget -= tokenData[_tokenId].fee;
             
-            // Reducir el presupuesto bloqueado antes de la transferencia
-            lockedBudget -= fee;
-            
-            // Transferir el fee al afiliado usando CurrencyTransferLib
+            // Transfer fee to affiliate
             if (currencyAddress == CurrencyTransferLib.NATIVE_TOKEN) {
-                (bool success, ) = affiliateAddress.call{value: fee}("");
+                (bool success, ) = affiliateAddress.call{value: tokenData[_tokenId].fee}("");
                 require(success, "Transfer failed");
             } else {
-                CurrencyTransferLib.transferCurrency(currencyAddress, address(this), affiliateAddress, fee);
+                CurrencyTransferLib.transferCurrency(currencyAddress, address(this), affiliateAddress, tokenData[_tokenId].fee);
             }
         }
 
-        redeemedQuantities[tokenId][tokenOwner] = 1;
-        redeemedTokenCount[tokenId] += 1;
+        redeemedQuantities[_tokenId][tokenOwner] = 1;
+        redeemedTokenCount[_tokenId] += 1;
 
-        emit CouponRedeemed(tokenOwner, tokenId, affiliateAddress, fee, address(this), block.timestamp, currencyAddress);
+        emit CouponRedeemed(tokenOwner, _tokenId, affiliateAddress, tokenData[_tokenId].fee, address(this), block.timestamp, currencyAddress);
     }
 
-    /// @notice Returns the URI for token metadata
-    /// @return URI string
-    function uri(uint256) public view override returns (string memory) {
-        return _tokenURI;
-    }
-
-    /// @notice Updates the token URI
-    /// @param newURI New URI to set
-    function setURI(string memory newURI) public onlyOwner {
-        _tokenURI = newURI;
-    }
-
-    /// @notice Allows users to lock additional budget for affiliate payments
+    /// @notice Allows users to lock additional budget for affiliate payments for a specific token
+    /// @param _tokenId The token ID to lock budget for
     /// @param amount Amount of budget to lock
-    function lockBudget(uint256 amount) public payable {
+    function lockBudget(uint256 _tokenId, uint256 amount) public payable {
+        if (!tokenData[_tokenId].exists) {
+            revert TokenDoesNotExist();
+        }
+        
         if (currencyAddress == CurrencyTransferLib.NATIVE_TOKEN) {
             if (msg.value != amount) revert MustSendTotalFee();
         } else {
@@ -336,18 +452,22 @@ contract Coupon is Initializable, ERC1155Upgradeable, OwnableUpgradeable {
             CurrencyTransferLib.transferCurrency(currencyAddress, msg.sender, address(this), amount);
         }
         
-        lockedBudget += amount;
+        tokenData[_tokenId].lockedBudget += amount;
         emit BudgetLocked(msg.sender, amount, address(this));
     }
 
-    /// @notice Allows the owner to withdraw locked budget
+    /// @notice Allows the owner to withdraw locked budget for a specific token
+    /// @param _tokenId The token ID to withdraw budget from
     /// @param amount Amount of budget to withdraw
-    function withdrawBudget(uint256 amount) public onlyOwner {
-        if (amount > lockedBudget) revert InvalidWithdrawalAmount();
+    function withdrawBudget(uint256 _tokenId, uint256 amount) public onlyOwner {
+        if (!tokenData[_tokenId].exists) {
+            revert TokenDoesNotExist();
+        }
+        if (amount > tokenData[_tokenId].lockedBudget) revert InvalidWithdrawalAmount();
         
-        // Si el tiempo de redención ha expirado, permitir retirar cualquier cantidad
-        if (block.timestamp > redeemExpiration) {
-            lockedBudget -= amount;
+        // If redemption has expired, allow withdrawing any amount
+        if (block.timestamp > tokenData[_tokenId].redeemExpiration) {
+            tokenData[_tokenId].lockedBudget -= amount;
             
             if (currencyAddress == CurrencyTransferLib.NATIVE_TOKEN) {
                 (bool success, ) = msg.sender.call{value: amount}("");
@@ -360,15 +480,15 @@ contract Coupon is Initializable, ERC1155Upgradeable, OwnableUpgradeable {
             return;
         }
         
-        // Calcular el presupuesto requerido utilizando la función compartida
-        uint256 requiredBudget = calculateRequiredBudget();
+        // Calculate required budget
+        uint256 requiredBudget = calculateRequiredBudget(_tokenId);
         
-        // Asegurar que queda suficiente presupuesto después del retiro
-        if (lockedBudget - amount < requiredBudget) {
+        // Ensure sufficient budget remains after withdrawal
+        if (tokenData[_tokenId].lockedBudget - amount < requiredBudget) {
             revert InsufficientBudget();
         }
         
-        lockedBudget -= amount;
+        tokenData[_tokenId].lockedBudget -= amount;
         
         if (currencyAddress == CurrencyTransferLib.NATIVE_TOKEN) {
             (bool success, ) = msg.sender.call{value: amount}("");
@@ -380,21 +500,45 @@ contract Coupon is Initializable, ERC1155Upgradeable, OwnableUpgradeable {
         emit BudgetWithdrawn(msg.sender, amount, address(this));
     }
     
-    /// @notice Returns the available budget that can be withdrawn
+    /// @notice Returns the available budget that can be withdrawn for a specific token
+    /// @param _tokenId The token ID to check available budget for
     /// @return Amount of budget available for withdrawal
-    function getAvailableBudget() public view returns (uint256) {
-        uint256 requiredBudget = calculateRequiredBudget();
+    function getAvailableBudget(uint256 _tokenId) public view returns (uint256) {
+        if (!tokenData[_tokenId].exists) {
+            revert TokenDoesNotExist();
+        }
         
-        if (requiredBudget >= lockedBudget) {
+        uint256 requiredBudget = calculateRequiredBudget(_tokenId);
+        
+        if (requiredBudget >= tokenData[_tokenId].lockedBudget) {
             return 0;
         }
         
-        return lockedBudget - requiredBudget;
+        return tokenData[_tokenId].lockedBudget - requiredBudget;
+    }
+
+    /// @notice Gets the total number of coupons (tokenIds) in this project
+    /// @return The number of coupons created
+    function getTotalCoupons() public view returns (uint256) {
+        return nextTokenId;
+    }
+
+    /// @notice Gets comprehensive data for a specific token
+    /// @param _tokenId The token ID to get data for
+    /// @return tokenData The complete token data struct
+    function getTokenData(uint256 _tokenId) public view returns (TokenData memory) {
+        if (!tokenData[_tokenId].exists) {
+            revert TokenDoesNotExist();
+        }
+        return tokenData[_tokenId];
     }
 
     /// @notice Only for testing - allows setting the locked budget directly
-    function setLockedBudgetForTesting(uint256 _newBudget) public onlyOwner {
-        lockedBudget = _newBudget;
+    function setLockedBudgetForTesting(uint256 _tokenId, uint256 _newBudget) public onlyOwner {
+        if (!tokenData[_tokenId].exists) {
+            revert TokenDoesNotExist();
+        }
+        tokenData[_tokenId].lockedBudget = _newBudget;
     }
 
     /// @notice Allows the contract to receive ETH

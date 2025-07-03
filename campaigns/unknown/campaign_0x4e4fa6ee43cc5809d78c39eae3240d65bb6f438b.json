@@ -1,0 +1,13 @@
+{
+  "address": "0x4E4Fa6eE43CC5809D78C39eae3240D65bB6f438B",
+  "brandOwner": "0x181fca4a238c21499F62364755f9b271c572e53b",
+  "creator": "0x181fca4a238c21499F62364755f9b271c572e53b",
+  "timestamp": "2025-06-27T14:02:55.635Z",
+  "contractURI": "ipfs://bafkreicn6nroaqszai7jwbpdnt75gvnjrcrd4mbraxz6wseutcmsk6fodi",
+  "initialCampaignURI": "ipfs://bafybeid4djduj36xsco6ic4pit3lvk2m73cuz3cd3rxgzr6jsepvsot7yu",
+  "totalBudgetInCredits": 10000,
+  "minCreditsPerParticipant": 100,
+  "expirationTimestamp": 1753624969,
+  "txHash": "0xd8db5846bbc03cceb5dc2658aaa7a9bb4bd7aaa94bec61109200f3558e059296",
+  "blockNumber": 32121812
+}

@@ -1,46 +1,29 @@
 const { ethers } = require("hardhat");
 const fs = require("fs");
 const path = require("path");
+const IPFSHelper = require("./ipfsHelper");
 
 async function main() {
-  console.log("Starting 2 arepa coupon creation...");
+  console.log("🚀 Starting project creation with real metadata uploaded to IPFS...");
 
   try {
+    // Initialize IPFS helper
+    const ipfsHelper = new IPFSHelper();
+    
     // Get network and signers
     const network = await ethers.provider.getNetwork();
     console.log(`Network: ${network.name} (chainId: ${network.chainId})`);
     
     const [deployer] = await ethers.getSigners();
-    console.log(`Creating coupon with account: ${deployer.address}`);
+    console.log(`Creating project with account: ${deployer.address}`);
     
     // Check balance
     const balance = await ethers.provider.getBalance(deployer.address);
     console.log(`Account balance: ${ethers.utils.formatEther(balance)} ETH`);
 
-    // Get factory address from deployed_addresses.json
-    let factoryAddress;
-    try {
-      // Try to load from ignition deployments
-      const deploymentPath = path.join(__dirname, "../ignition/deployments/chain-8453/deployed_addresses.json");
-      if (fs.existsSync(deploymentPath)) {
-        const deploymentInfo = JSON.parse(fs.readFileSync(deploymentPath, 'utf8'));
-        factoryAddress = deploymentInfo["TokenFactoryModule#TokenFactory"];
-        console.log(`Loaded factory address from ignition deployments: ${factoryAddress}`);
-      } else {
-        throw new Error("Ignition deployment info not found");
-      }
-    } catch (error) {
-      // Fallback to environment variable
-      console.log(`Error loading from ignition deployments: ${error.message}`);
-      factoryAddress = process.env.FACTORY_ADDRESS;
-      
-      if (!factoryAddress) {
-        console.error("Failed to get factory address from deployments and no FACTORY_ADDRESS environment variable set");
-        process.exit(1);
-      }
-      
-      console.log(`Using factory address from environment: ${factoryAddress}`);
-    }
+    // Use the new factory address
+    const factoryAddress = "0xfc61cC87944512ddAc9F39FD3214a04463b2DEb6";
+    console.log(`Using factory address: ${factoryAddress}`);
 
     // Connect to the factory contract
     const TokenFactory = await ethers.getContractFactory("TokenFactory");
@@ -49,163 +32,203 @@ async function main() {
     // Generate a random salt
     const salt = ethers.utils.randomBytes(32);
 
-    // Coupon parameters for "2 arepa"
-    const couponData = {
-      name: "2 arepa",
-      description: "",
-      image: "ipfs://bafkreidkftqrspl5n5ru26ma5i5tz5pfbxtpi4aoawhnl6kou4f3c3ivym",
-      promoVideo: "ipfs://bafybeid4djduj36xsco6ic4pit3lvk2m73cuz3cd3rxgzr6jsepvsot7yu",
-      backgroundColor: "#FFD700",
-      textColor: "#ffffff",
-      visibility: "public",
-      category: "Discount",
-      location: {
-        address1: "Carrer de la Diputació, 340",
-        address2: "",
-        formattedAddress: "Carrer de la Diputació, 340, L'Eixample, 08009 Barcelona, Spain",
-        city: "Barcelona",
-        region: "",
-        postalCode: "08009",
-        country: "Spain",
-        lat: 41.396187399999995,
-        lng: 2.1750865999999998
-      },
-      claimStartDate: Math.floor(Date.now() / 1000), // Current timestamp for start claiming
-      claimExpirationDate: 1750366287,
-      couponExpirationDate: 1752958287,
-      attributes: [
-        { trait_type: "Coupon Type", value: "Discount" },
-        { trait_type: "Claim Start", value: "5/20/2025, 10:51:27 PM" },
-        { trait_type: "Claim Expiration", value: "6/19/2025, 10:51:27 PM" },
-        { trait_type: "Coupon Expiration", value: "7/19/2025, 10:51:27 PM" }
-      ]
-    };
+    // Generate project metadata following the schema
+    console.log("\n📊 Generating project metadata...");
+    const projectMetadata = ipfsHelper.generateProjectMetadata();
+    console.log(`Generated project: ${projectMetadata.name} in ${projectMetadata.city}, ${projectMetadata.country}`);
 
-    // Use the existing IPFS URI for the image
-    const uri = couponData.image;
-    console.log(`Using metadata URI: ${uri}`);
+    // Upload project metadata to IPFS
+    const projectMetadataURI = await ipfsHelper.uploadJSON(
+      projectMetadata, 
+      `project-${projectMetadata.name.replace(/\s+/g, '-').toLowerCase()}.json`
+    );
 
-    // Create a new project and coupon
-    console.log("Creating new coupon with a new project...");
-    
-    // Get the NO_PROJECT_ID constant from the contract
-    const NO_PROJECT_ID = await factory.NO_PROJECT_ID();
-    
-    const maxSupply = 1000; // Example max supply
-    const claimStart = Math.floor(Date.now() / 1000); // Current time for start claiming
-    const claimEnd = couponData.claimExpirationDate;
-    const redeemExpiration = couponData.couponExpirationDate;
-    const lockedBudget = ethers.utils.parseEther("0"); // No budget locked
+    // Generate first coupon metadata following the schema
+    console.log("\n🎫 Generating first coupon metadata...");
+    const firstCouponMetadata = ipfsHelper.generateCouponMetadata();
+    console.log(`Generated coupon: ${firstCouponMetadata.name} - ${firstCouponMetadata.description}`);
+
+    // Upload first coupon metadata to IPFS
+    const firstCouponUri = await ipfsHelper.uploadJSON(
+      firstCouponMetadata,
+      `coupon-${firstCouponMetadata.name.replace(/\s+/g, '-').toLowerCase()}.json`
+    );
+
+    // Project parameters with realistic values
+    const now = Math.floor(Date.now() / 1000);
+    const maxSupply = Math.floor(Math.random() * 900) + 100; // Random between 100-1000
+    const claimStart = now; // Can claim immediately
+    const claimEnd = now + (30 * 24 * 60 * 60); // 30 days from now
+    const redeemExpiration = now + (90 * 24 * 60 * 60); // 90 days from now
+    const lockedBudget = ethers.utils.parseEther("0"); // No budget locked for this example
     const currencyAddress = "0x0000000000000000000000000000000000000000"; // ETH address (zero address)
     const fee = 0; // No fee for redemption
 
-    console.log(`Coupon Parameters:
-    - Name: ${couponData.name}
-    - Max Supply: ${maxSupply}
-    - Claim Start: ${new Date(claimStart * 1000).toLocaleString()}
-    - Claim End: ${new Date(claimEnd * 1000).toLocaleString()}
-    - Redemption Expiration: ${new Date(redeemExpiration * 1000).toLocaleString()}
-    `);
+    console.log(`\n📋 Project Parameters:`);
+    console.log(`- Name: ${projectMetadata.name}`);
+    console.log(`- Description: ${projectMetadata.description}`);
+    console.log(`- City: ${projectMetadata.city}, ${projectMetadata.country}`);
+    console.log(`- Category: ${projectMetadata.category}`);
+    console.log(`- Metadata URI: ${projectMetadataURI}`);
+    
+    console.log(`\n🎫 First Coupon Parameters:`);
+    console.log(`- Name: ${firstCouponMetadata.name}`);
+    console.log(`- Description: ${firstCouponMetadata.description}`);
+    console.log(`- Max Supply: ${maxSupply}`);
+    console.log(`- Claim Start: ${new Date(claimStart * 1000).toLocaleString()}`);
+    console.log(`- Claim End: ${new Date(claimEnd * 1000).toLocaleString()}`);
+    console.log(`- Redemption Expiration: ${new Date(redeemExpiration * 1000).toLocaleString()}`);
+    console.log(`- Visibility: ${firstCouponMetadata.visibility}`);
+    console.log(`- Attributes: ${firstCouponMetadata.attributes.length} attributes`);
+    console.log(`- Metadata URI: ${firstCouponUri}`);
 
     // Estimate gas before transaction
-    const gasEstimate = await factory.estimateGas.createLazyMint(
-      NO_PROJECT_ID,
-      couponData.name,
-      uri,
-      maxSupply,
-      claimStart,
-      claimEnd,
-      redeemExpiration,
-      lockedBudget,
-      currencyAddress,
-      fee,
-      salt
-    );
-    
-    console.log(`Estimated gas: ${gasEstimate.toString()}`);
-
-    // Create the coupon
-    const tx = await factory.createLazyMint(
-      NO_PROJECT_ID,
-      couponData.name,
-      uri,
-      maxSupply,
-      claimStart,
-      claimEnd,
-      redeemExpiration,
-      lockedBudget,
-      currencyAddress,
-      fee,
-      salt,
-      {
-        gasLimit: gasEstimate.mul(120).div(100) // Add 20% buffer
-      }
-    );
-
-    console.log(`Transaction sent: ${tx.hash}`);
-    console.log("Waiting for transaction confirmation...");
-    
-    const receipt = await tx.wait();
-    console.log(`Transaction confirmed in block ${receipt.blockNumber}`);
-    
-    // Parse the event to get the coupon address
-    const lazyMintDeployedEvent = receipt.events.find(e => e.event === "LazyMintDeployed");
-    
-    if (lazyMintDeployedEvent) {
-      const couponAddress = lazyMintDeployedEvent.args.lazyMintAddress;
-      const projectId = lazyMintDeployedEvent.args.projectId;
-      
-      console.log("\n===== Coupon Creation Complete =====");
-      console.log(`Coupon address: ${couponAddress}`);
-      console.log(`Project ID: ${projectId.toString()}`);
-      console.log(`Claim period: ${new Date(claimStart * 1000).toLocaleString()} to ${new Date(claimEnd * 1000).toLocaleString()}`);
-      console.log(`Redemption expiration: ${new Date(redeemExpiration * 1000).toLocaleString()}`);
-      
-      // Save coupon info to file
-      saveCouponInfo(network.name, {
-        address: couponAddress,
-        projectId: projectId.toString(),
-        name: couponData.name,
-        creator: deployer.address,
-        timestamp: new Date().toISOString(),
+    try {
+      const gasEstimate = await factory.estimateGas.createProject(
+        projectMetadataURI,
+        currencyAddress,
+        firstCouponUri,
         maxSupply,
         claimStart,
         claimEnd,
         redeemExpiration,
-        metadata: couponData
-      });
-    } else {
-      console.error("Could not find LazyMintDeployed event in transaction receipt");
+        fee,
+        lockedBudget,
+        salt
+      );
+      
+      console.log(`\n⛽ Estimated gas: ${gasEstimate.toString()}`);
+
+      // Create the project
+      console.log("\n🔄 Deploying project contract...");
+      const tx = await factory.createProject(
+        projectMetadataURI,
+        currencyAddress,
+        firstCouponUri,
+        maxSupply,
+        claimStart,
+        claimEnd,
+        redeemExpiration,
+        fee,
+        lockedBudget,
+        salt,
+        {
+          gasLimit: gasEstimate.mul(120).div(100) // Add 20% buffer
+        }
+      );
+
+      console.log(`📤 Transaction sent: ${tx.hash}`);
+      console.log("⏳ Waiting for transaction confirmation...");
+      
+      const receipt = await tx.wait();
+      console.log(`✅ Transaction confirmed in block ${receipt.blockNumber}`);
+      
+      // Parse the event to get the project address
+      const projectDeployedEvent = receipt.events.find(e => e.event === "ProjectDeployed");
+      
+      if (projectDeployedEvent) {
+        const projectAddress = projectDeployedEvent.args.projectAddress;
+        
+        console.log("\n🎉 ===== PROJECT CREATION COMPLETE =====");
+        console.log(`🏢 Project: ${projectMetadata.name}`);
+        console.log(`📍 Location: ${projectMetadata.city}, ${projectMetadata.country}`);
+        console.log(`📄 Contract address: ${projectAddress}`);
+        console.log(`🔗 Project metadata: ${projectMetadataURI}`);
+        console.log(`🎫 First coupon: ${firstCouponMetadata.name} (tokenId 0)`);
+        console.log(`📊 Max supply: ${maxSupply}`);
+        console.log(`⏰ Claim period: ${new Date(claimStart * 1000).toLocaleDateString()} to ${new Date(claimEnd * 1000).toLocaleDateString()}`);
+        console.log(`🔄 Redemption until: ${new Date(redeemExpiration * 1000).toLocaleDateString()}`);
+        console.log(`🔗 Coupon metadata: ${firstCouponUri}`);
+        
+        // Save comprehensive project info to file
+        const projectInfo = {
+          contractAddress: projectAddress,
+          deploymentBlock: receipt.blockNumber,
+          deploymentTimestamp: new Date().toISOString(),
+          creator: deployer.address,
+          transactionHash: tx.hash,
+          
+          // Project metadata
+          projectMetadata: projectMetadata,
+          projectMetadataURI: projectMetadataURI,
+          
+          // First coupon data
+          firstCoupon: {
+            tokenId: 0,
+            metadata: firstCouponMetadata,
+            metadataURI: firstCouponUri,
+            maxSupply: maxSupply,
+            claimStart: claimStart,
+            claimEnd: claimEnd,
+            redeemExpiration: redeemExpiration,
+            fee: fee,
+            lockedBudget: lockedBudget.toString()
+          },
+          
+          // Contract parameters
+          factory: factoryAddress,
+          currencyAddress: currencyAddress,
+          salt: ethers.utils.hexlify(salt)
+        };
+        
+        saveProjectInfo(network.name, projectInfo);
+
+        console.log("\n💡 NEXT STEPS:");
+        console.log(`1. 🔧 Update scripts to use new project address: ${projectAddress}`);
+        console.log("2. 🎫 Test coupon claiming with claimCoupon.js");
+        console.log("3. ➕ Add more coupons with addCoupon.js");
+        console.log("4. 📊 Deploy subgraph to index the new project");
+        
+      } else {
+        console.error("❌ Could not find ProjectDeployed event in transaction receipt");
+      }
+      
+    } catch (gasError) {
+      console.error("❌ Error estimating gas or deploying:", gasError);
+      console.log("\n💡 Common solutions:");
+      console.log("- Check you have enough ETH for gas fees");
+      console.log("- Verify the factory contract address is correct");
+      console.log("- Ensure claim dates are in correct chronological order");
     }
     
   } catch (error) {
-    console.error("Error during coupon creation:", error);
+    console.error("❌ Error during project creation:", error);
+    console.log("\n🔧 Troubleshooting tips:");
+    console.log("- Ensure you have sufficient ETH balance");
+    console.log("- Check network connectivity");
+    console.log("- Verify contract addresses are correct");
+    console.log("- Set up Pinata credentials for IPFS uploads (optional)");
     process.exit(1);
   }
 }
 
-function saveCouponInfo(network, info) {
-  // Create directory if doesn't exist
-  const couponsDir = path.join(__dirname, "../coupons");
-  if (!fs.existsSync(couponsDir)) {
-    fs.mkdirSync(couponsDir);
+function saveProjectInfo(network, info) {
+  try {
+    // Create directory if doesn't exist
+    const projectsDir = path.join(__dirname, "../projects");
+    if (!fs.existsSync(projectsDir)) {
+      fs.mkdirSync(projectsDir);
+    }
+    
+    // Create network directory if doesn't exist
+    const networkDir = path.join(projectsDir, network);
+    if (!fs.existsSync(networkDir)) {
+      fs.mkdirSync(networkDir);
+    }
+    
+    // Write to file with timestamp
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const fileName = `project_${info.projectMetadata.name.replace(/\s+/g, '_')}_${timestamp}.json`;
+    const filePath = path.join(networkDir, fileName);
+    fs.writeFileSync(filePath, JSON.stringify(info, null, 2));
+    console.log(`💾 Project info saved to ${filePath}`);
+  } catch (saveError) {
+    console.error("⚠️  Could not save project info:", saveError.message);
   }
-  
-  // Create network directory if doesn't exist
-  const networkDir = path.join(couponsDir, network);
-  if (!fs.existsSync(networkDir)) {
-    fs.mkdirSync(networkDir);
-  }
-  
-  // Write to file
-  const fileName = `coupon_${info.name.replace(/\s+/g, '_')}_${Date.now()}.json`;
-  const filePath = path.join(networkDir, fileName);
-  fs.writeFileSync(filePath, JSON.stringify(info, null, 2));
-  console.log(`Coupon info saved to ${filePath}`);
 }
 
 // Execute the main function
 main().catch((error) => {
-  console.error(error);
+  console.error("💥 Unhandled error:", error);
   process.exitCode = 1;
 }); 

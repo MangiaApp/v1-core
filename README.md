@@ -1,4 +1,4 @@
-# PushCola Contracts
+# Mangia Contracts
 
 ![Lint](https://img.shields.io/badge/Lint-passing-brightgreen) ![Tests](https://img.shields.io/badge/Tests-passing-brightgreen)
 

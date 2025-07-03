@@ -1,0 +1,63 @@
+{
+  "contractAddress": "0x687e3149ac368E4E85de88C5c6DC60fc90dCA51E",
+  "deploymentBlock": 32207786,
+  "deploymentTimestamp": "2025-06-29T13:48:42.469Z",
+  "creator": "0x181fca4a238c21499F62364755f9b271c572e53b",
+  "transactionHash": "0xf10c375d71f62656e4ef3168b1a472b63607aeed34d5dbca2eb806873dd77afc",
+  "projectMetadata": {
+    "name": "Pizza Napoli Express",
+    "description": "Wood-fired Neapolitan pizzas made with imported Italian ingredients and traditional recipes.",
+    "logo": "ipfs://bafybeihgxdzljxb26q6nf3r3eifqeedsvt2eubqtskghpme66cgjyw4fra",
+    "websiteUrl": "https://pizzanapoliexpress.com",
+    "instagramUrl": "https://instagram.com/pizzanapoliexpress",
+    "tiktokUrl": "https://tiktok.com/@pizzanapoliexpress",
+    "city": "Naples",
+    "country": "Italy",
+    "locationAddress": "Via dei Tribunali, 32, 80138 Napoli",
+    "backgroundColor": "#228B22",
+    "textColor": "#FFFFFF",
+    "category": "Italian Restaurant"
+  },
+  "projectMetadataURI": "ipfs://bafkreiftwnmrssywgums4rtju5ge2bsjjqjacqesorpw2grz3tfo2k3w74",
+  "firstCoupon": {
+    "tokenId": 0,
+    "metadata": {
+      "name": "Happy Hour Special",
+      "description": "50% off on all beverages between 4 PM - 6 PM.",
+      "image": "ipfs://QmAnotherImageCID9876543210fedcba",
+      "visibility": "public",
+      "attributes": [
+        {
+          "trait_type": "Coupon Type",
+          "value": "Time-Limited Offer"
+        },
+        {
+          "trait_type": "Validity",
+          "value": "30 days"
+        },
+        {
+          "trait_type": "Usage Limit",
+          "value": "One per customer"
+        },
+        {
+          "trait_type": "Minimum Order",
+          "value": "$10 minimum"
+        },
+        {
+          "trait_type": "Restaurant Type",
+          "value": "Fast Food"
+        }
+      ]
+    },
+    "metadataURI": "ipfs://bafkreidrad6vgmsu5r3oihju2qvn2qulqri7wt56q2rod4fra4dekwwmmm",
+    "maxSupply": 759,
+    "claimStart": 1751204916,
+    "claimEnd": 1753796916,
+    "redeemExpiration": 1758980916,
+    "fee": 0,
+    "lockedBudget": "0"
+  },
+  "factory": "0xfc61cC87944512ddAc9F39FD3214a04463b2DEb6",
+  "currencyAddress": "0x0000000000000000000000000000000000000000",
+  "salt": "0x171525ef45f31907154583ef54b66ca6dcfc7bea23f6d3f4328590fa366ac103"
+}

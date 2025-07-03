@@ -1,0 +1,63 @@
+{
+  "contractAddress": "0xAe0c994124FCCB9Fd95ca5354474A167765Dbe91",
+  "deploymentBlock": 32208097,
+  "deploymentTimestamp": "2025-06-29T13:59:04.587Z",
+  "creator": "0x181fca4a238c21499F62364755f9b271c572e53b",
+  "transactionHash": "0x8d540c4106d758fd27c939d0297c9dc88d8150638f55abce5b4510d403a0c932",
+  "projectMetadata": {
+    "name": "Burger Palace NYC",
+    "description": "Gourmet burgers made with premium ingredients and served with hand-cut fries.",
+    "logo": "ipfs://bafkreiac3t35fklpiwqonav2vj4x2dh6x2zugkdu7dsh6zkaq5jr33lcwy",
+    "websiteUrl": "https://burgerpalacenyc.com",
+    "instagramUrl": "https://instagram.com/burgerpalacenyc",
+    "tiktokUrl": "https://tiktok.com/@burgerpalacenyc",
+    "city": "New York",
+    "country": "USA",
+    "locationAddress": "123 Broadway, Manhattan, NY 10001",
+    "backgroundColor": "#FF1493",
+    "textColor": "#FFFFFF",
+    "category": "American Restaurant"
+  },
+  "projectMetadataURI": "ipfs://bafkreiegwhwo7tu2wmo5g2svgzdqvyf4ko55cqowbj7jrjdb2zjw3llmny",
+  "firstCoupon": {
+    "tokenId": 0,
+    "metadata": {
+      "name": "20% Off Total Bill",
+      "description": "Enjoy 20% discount on your entire order, excluding beverages.",
+      "image": "ipfs://QmAnotherImageCID9876543210fedcba",
+      "visibility": "public",
+      "attributes": [
+        {
+          "trait_type": "Coupon Type",
+          "value": "Percentage Discount"
+        },
+        {
+          "trait_type": "Validity",
+          "value": "6 months"
+        },
+        {
+          "trait_type": "Usage Limit",
+          "value": "One per customer"
+        },
+        {
+          "trait_type": "Minimum Order",
+          "value": "No minimum"
+        },
+        {
+          "trait_type": "Restaurant Type",
+          "value": "Casual Dining"
+        }
+      ]
+    },
+    "metadataURI": "ipfs://bafkreidr3k7kntgd6cv3ydtekqjacmsullr2grtk7y2v4orcxppa4cqjoe",
+    "maxSupply": 274,
+    "claimStart": 1751205538,
+    "claimEnd": 1753797538,
+    "redeemExpiration": 1758981538,
+    "fee": 0,
+    "lockedBudget": "0"
+  },
+  "factory": "0xfc61cC87944512ddAc9F39FD3214a04463b2DEb6",
+  "currencyAddress": "0x0000000000000000000000000000000000000000",
+  "salt": "0x687494f7e468f22a12d1810cb0f9a9be51225e04f889d60a8b225eedf35fa656"
+}

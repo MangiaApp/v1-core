@@ -1,0 +1,40 @@
+{
+  "projectAddress": "0xA0452b00a4875AA760F45398ddcAe43a6b52Dd0b",
+  "projectName": "Arepa Paradise",
+  "tokenId": "1",
+  "name": "Free Drink",
+  "creator": "0x181fca4a238c21499F62364755f9b271c572e53b",
+  "timestamp": "2025-06-29T12:40:38.476Z",
+  "maxSupply": 500,
+  "claimStart": 1751200832,
+  "claimEnd": 1753792832,
+  "redeemExpiration": 1756384832,
+  "fee": "0",
+  "lockedBudget": "0",
+  "metadata": {
+    "name": "Free Drink",
+    "description": "Get a free traditional Venezuelan drink with any arepa purchase",
+    "image": "ipfs://bafkreihijklmnopqrstuvwxyz123456789012345678901234567890abcdef",
+    "backgroundColor": "#00FF00",
+    "textColor": "#ffffff",
+    "visibility": "public",
+    "category": "Free Item",
+    "claimStartDate": 1751200832,
+    "claimExpirationDate": 1753792832,
+    "couponExpirationDate": 1756384832,
+    "attributes": [
+      {
+        "trait_type": "Coupon Type",
+        "value": "Free Item"
+      },
+      {
+        "trait_type": "Category",
+        "value": "Drink"
+      },
+      {
+        "trait_type": "Validity",
+        "value": "30 days"
+      }
+    ]
+  }
+}

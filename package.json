@@ -18,6 +18,7 @@
     "@uniswap/sdk-core": "^5.4.0",
     "@uniswap/v3-sdk": "^3.14.0",
     "ethers": "^5.7.2",
-    "fix": "^0.0.6"
+    "fix": "^0.0.6",
+    "pinata": "^2.4.8"
   }
 }
