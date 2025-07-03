@@ -1,3 +1,5 @@
+.vscode/
+
 node_modules
 .env
 
@@ -6,6 +8,9 @@ node_modules
 # Hardhat files
 /cache
 /artifacts
+
+# foundry generated files
+out/
 
 # TypeChain files
 /typechain
