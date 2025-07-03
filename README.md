@@ -2,7 +2,7 @@
 
 ![Lint](https://img.shields.io/badge/Lint-passing-brightgreen) ![Tests](https://img.shields.io/badge/Tests-passing-brightgreen) ![License](https://img.shields.io/badge/License-MIT-blue) ![Solidity](https://img.shields.io/badge/Solidity-0.8.19-orange)
 
-A smart contract system for lazy minting ERC1155 tokens with affiliate marketing capabilities, enabling efficient token distribution with built-in referral rewards and coupon redemption features.
+A smart contract system for managing influencer marketing campaigns, enabling restaurants and brands to create budget-allocated campaigns that micro influencers can claim in exchange for social media content creation on TikTok, with built-in off-chain content validation and automated payment distribution.
 
 ## Table of Contents
 
@@ -21,19 +21,23 @@ A smart contract system for lazy minting ERC1155 tokens with affiliate marketing
 
 ## Background
 
-Mangia Contracts implements a comprehensive system for conducting primary NFT drops with affiliate marketing integration. The system supports lazy minting of ERC1155 tokens, allowing users to claim tokens with optional affiliate referrals, and enables coupon redemption with automatic fee distribution to affiliates.
+Mangia Contracts implements a comprehensive platform for influencer marketing campaigns in the restaurant and brand industry. The system allows restaurants and brands to create marketing campaigns with allocated budgets, which micro influencers can claim in exchange for creating and posting content on TikTok.
 
-This solution is designed for businesses wanting to run promotional campaigns with trackable referrals, where digital coupons can be distributed as NFTs and later redeemed for real-world benefits while rewarding affiliates who helped drive adoption.
+The platform uses ERC1155 tokens to represent campaign participation rights, enabling efficient campaign management with built-in budget allocation, content validation workflows, and automatic payment distribution to successful influencers upon content approval.
+
+This solution bridges the gap between traditional marketing spend and social media influence, providing a transparent, blockchain-based system for campaign management and influencer compensation.
 
 ## Key Features
 
-- **🎯 Lazy Minting**: Efficient ERC1155 token creation with on-demand minting
-- **👥 Affiliate System**: Built-in referral program with unique affiliate IDs and automatic fee distribution
-- **🎟️ Coupon Redemption**: Time-bound coupon system with configurable expiration dates
-- **💰 Budget Management**: Automated affiliate payment system with budget allocation and withdrawal controls
-- **📱 IPFS Integration**: Decentralized metadata storage using Pinata for coupon data
-- **⏰ Time Controls**: Configurable claim windows and redemption periods
-- **🔒 Security**: One token per address limit with anti-self-referral protection
+- **🏪 Brand Campaign Creation**: Restaurants and brands can create marketing campaigns with allocated budgets
+- **📱 Influencer Participation**: Micro influencers can claim available campaigns and receive campaign tokens
+- **🎬 Content Validation**: Built-in workflow for validating TikTok content before payment release
+- **💰 Budget Management**: Automated budget allocation and payment distribution system
+- **🎯 Lazy Minting**: Efficient ERC1155 token creation representing campaign participation
+- **👥 Multi-Stakeholder**: Support for brands, influencers, and content validators
+- **📊 Campaign Analytics**: Track campaign performance and influencer engagement
+- **⏰ Time Controls**: Configurable campaign windows and content submission deadlines
+- **🔒 Security**: Anti-fraud measures and secure payment escrow system
 
 ## Deployments
 
@@ -47,24 +51,26 @@ The contracts can be deployed to any EVM-compatible blockchain. Current deployme
 
 ## Architecture
 
-The system consists of two main contracts:
+The system consists of campaign management and validation contracts:
 
 ```
-┌─────────────────┐    ┌──────────────────┐
-│   TokenFactory  │───▶│   Coupon Clone   │
-│                 │    │   (ERC1155)      │
-│ - Deploy clones │    │ - Lazy minting   │
-│ - Gas efficient │    │ - Affiliate sys  │
-└─────────────────┘    │ - Redemption     │
+┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
+│   TokenFactory  │───▶│   Campaign Clone │    │  Content        │
+│                 │    │   (ERC1155)      │◄──►│  Validator      │
+│ - Deploy clones │    │ - Budget mgmt    │    │ - Review posts  │
+│ - Gas efficient │    │ - Influencer sys │    │ - Release fees  │
+└─────────────────┘    │ - Token minting  │    └─────────────────┘
                        └──────────────────┘
 ```
 
-### Workflow
+### Campaign Workflow
 
-1. **Deploy**: Factory creates new Coupon contract instances
-2. **Configure**: Set claim windows, supply limits, and affiliate settings
-3. **Claim**: Users mint tokens (optionally with affiliate referral)
-4. **Redeem**: Owner redeems coupons, triggering affiliate payments
+1. **Campaign Creation**: Brands deploy new campaign contracts with budget allocation
+2. **Budget Deposit**: Brands deposit campaign budget into smart contract escrow
+3. **Influencer Claims**: Micro influencers claim campaign slots and receive participation tokens
+4. **Content Creation**: Influencers create and post TikTok content according to campaign requirements
+5. **Content Validation**: Submitted content undergoes validation process *(upcoming feature)*
+6. **Payment Release**: Upon validation approval, campaign fees are automatically distributed to influencers
 
 ## Install
 
@@ -94,7 +100,7 @@ The project uses:
 - **Hardhat**: Development environment and testing framework
 - **Foundry**: Fast Solidity testing and gas optimization
 - **OpenZeppelin**: Security-audited contract libraries
-- **Pinata**: IPFS pinning service for metadata storage
+- **Pinata**: IPFS pinning service for campaign metadata storage
 
 ## Usage
 
@@ -105,60 +111,75 @@ The project uses:
 npx hardhat ignition deploy ignition/modules/TokenFactory.ts --network localhost
 ```
 
-2. **Create a coupon contract**:
+2. **Create a campaign contract**:
 ```bash
-npx hardhat run scripts/createCoupon.js --network localhost
+npx hardhat run scripts/createCampaign.js --network localhost
 ```
 
-3. **Configure your campaign** with claim windows, supply limits, and IPFS metadata
+3. **Configure your campaign** with budget, requirements, and content submission deadlines
 
 ### Basic Integration
 
 ```solidity
-// Example: Claiming a token with affiliate referral
-function claimToken(uint256 affiliateId) external {
-    coupon.claim(msg.sender, affiliateId);
+// Example: Brand creating a campaign
+function createCampaign(
+    uint256 budget,
+    uint256 maxInfluencers,
+    uint256 feePerInfluencer
+) external {
+    campaign.initialize(budget, maxInfluencers, feePerInfluencer);
 }
 
-// Example: Redeeming coupons (owner only)
-function redeemCoupons(uint256[] calldata tokenIds) external onlyOwner {
-    coupon.redeemCoupons(tokenIds);
+// Example: Influencer claiming campaign slot
+function claimCampaignSlot() external {
+    campaign.claimSlot(msg.sender);
+}
+
+// Example: Content validation and payment release (upcoming)
+function validateAndPay(uint256 tokenId, bool approved) external onlyValidator {
+    campaign.validateContent(tokenId, approved);
 }
 ```
 
 ### Configuration Options
 
-- **Claim Window**: Set `claimStart` and `claimEnd` timestamps
-- **Supply Limits**: Configure `maxSupply` for token cap
-- **Affiliate Fees**: Set fee amounts and payment tokens
-- **Expiration**: Configure `redeemExpiration` for time limits
+- **Campaign Window**: Set `campaignStart` and `campaignEnd` timestamps
+- **Budget Limits**: Configure total budget and fee per influencer
+- **Content Requirements**: Set TikTok post requirements and submission deadlines
+- **Validation**: Configure content review process and approval criteria
 
 ## Smart Contracts
 
 ### Core Contracts
 
-- **`Coupon.sol`**: Main ERC1155 implementation with affiliate and redemption capabilities
-- **`TokenFactory.sol`**: Factory contract for efficient clone deployment
+- **`Campaign.sol`**: Main ERC1155 implementation for campaign management and influencer participation
+- **`TokenFactory.sol`**: Factory contract for efficient campaign contract deployment
+- **`ContentValidator.sol`**: *(Upcoming)* Contract for managing content validation and payment release
 
 ### Key Functions
 
-#### Claiming
+#### Campaign Management
 ```solidity
-function claim(address to, uint256 affiliateId) external
+function createCampaign(
+    uint256 budget,
+    uint256 maxInfluencers,
+    uint256 feePerInfluencer
+) external onlyBrand
 ```
-Mints one token per address with optional affiliate referral.
+Creates a new marketing campaign with specified budget and parameters.
 
-#### Affiliate Registration
+#### Influencer Participation
 ```solidity
-function registerAffiliate() external returns (uint256)
+function claimCampaignSlot() external returns (uint256)
 ```
-Registers caller as affiliate and returns unique ID.
+Allows micro influencers to claim available campaign slots and receive participation tokens.
 
-#### Coupon Redemption
+#### Content Validation *(Upcoming Feature)*
 ```solidity
-function redeemCoupons(uint256[] calldata tokenIds) external onlyOwner
+function submitContent(uint256 tokenId, string calldata contentUrl) external
+function validateContent(uint256 tokenId, bool approved) external onlyValidator
 ```
-Redeems coupons and distributes affiliate fees.
+Handles content submission and validation workflow for payment release.
 
 ## Development
 
@@ -190,7 +211,7 @@ contracts/
 ├── ignition/          # Hardhat Ignition deployment modules
 ├── test/              # Test files (Hardhat & Foundry)
 ├── deployments/       # Deployment records by network
-└── coupons/           # Generated coupon data and records
+└── campaigns/         # Generated campaign data and records
 ```
 
 ## Testing
@@ -212,10 +233,11 @@ forge test -vvv         # With stack traces
 
 ### Test Coverage
 
-- ✅ Token claiming and supply limits
-- ✅ Affiliate registration and fee distribution  
-- ✅ Coupon redemption and expiration
-- ✅ Budget management and withdrawals
+- ✅ Campaign creation and budget management
+- ✅ Influencer registration and slot claiming
+- ✅ Token minting and supply limits
+- ✅ Budget allocation and payment distribution  
+- ✅ Content validation workflow *(in development)*
 - ✅ Access controls and security features
 - ✅ Gas optimization and edge cases
 
@@ -285,28 +307,11 @@ MIT License
 
 Copyright (c) 2024 Mangia Contracts
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
 ```
 
 ---
 
-**Built with ❤️ for the decentralized future**
+**Built with ❤️ for connecting brands with micro influencers**
 
 For questions, support, or collaboration opportunities, please open an issue or reach out to the development team.
 
