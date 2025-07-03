@@ -10,7 +10,7 @@ node_modules
 /artifacts
 
 # foundry generated files
-/out
+out
 
 # TypeChain files
 /typechain
