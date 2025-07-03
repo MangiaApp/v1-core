@@ -1,15 +1,19 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
 
-import "./Coupon.sol";
+import "./Campaign.sol";
 import "@openzeppelin/contracts/proxy/Clones.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
-/// @title TokenFactory
-/// @notice This contract serves as a factory to deploy new instances of the Coupon contract using clones.
-/// @dev Uses minimal proxy pattern to deploy new Coupon contracts to save on gas and reduce bytecode size.
-///      Each deployed contract represents a project with multiple coupons.
-contract TokenFactory is Ownable {
+/// @title ProjectFactory - Campaign Contract Deployment Factory
+/// @notice This contract serves as a factory to deploy new Campaign contract instances using the
+///         minimal proxy (clone) pattern. Each deployment creates a new campaign that can manage
+///         multiple ERC1155 coupons with affiliate systems and budget management capabilities.
+/// @dev Uses OpenZeppelin's Clones library for gas-efficient deployments via minimal proxy pattern.
+///      Maintains registry of deployed campaigns and handles initialization with project metadata,
+///      currency configuration, and first coupon setup. Significantly reduces deployment costs
+///      compared to deploying full contract bytecode for each campaign.
+contract ProjectFactory is Ownable {
 
     // Implementation of Coupon contract to clone
     address public implementation;
@@ -107,7 +111,7 @@ contract TokenFactory is Ownable {
         address projectAddress = Clones.cloneDeterministic(implementation, _salt);
         
         // Prepare first coupon data
-        Coupon.FirstCouponData memory firstCouponData = Coupon.FirstCouponData({
+        Campaign.FirstCouponData memory firstCouponData = Campaign.FirstCouponData({
             uri: _firstCouponUri,
             maxSupply: _firstCouponMaxSupply,
             claimStart: _firstCouponClaimStart,
@@ -118,7 +122,7 @@ contract TokenFactory is Ownable {
         });
         
         // Initialize the clone with ETH if needed
-        Coupon(payable(projectAddress)).initialize{value: msg.value}(
+        Campaign(payable(projectAddress)).initialize{value: msg.value}(
             _projectMetadataURI,
             _currencyAddress,
             msg.sender, // Owner

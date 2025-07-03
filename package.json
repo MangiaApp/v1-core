@@ -14,11 +14,7 @@
     "@openzeppelin/contracts": "^5.0.2",
     "@openzeppelin/contracts-upgradeable": "^5.0.2",
     "@pinata/sdk": "^2.1.0",
-    "@thirdweb-dev/contracts": "^3.15.0",
-    "@uniswap/sdk-core": "^5.4.0",
-    "@uniswap/v3-sdk": "^3.14.0",
     "ethers": "^5.7.2",
-    "fix": "^0.0.6",
     "pinata": "^2.4.8"
   }
 }
