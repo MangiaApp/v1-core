@@ -132,7 +132,6 @@ contract Campaign is Initializable, ERC1155Upgradeable, OwnableUpgradeable {
     /// @notice Errors for various invalid states
     error MaxSupplyMustBeGreaterThanZero();
     error AlreadyRegisteredAsAffiliate();
-    error TokenAlreadyClaimed();
     error QuantityMustBeGreaterThanZero();
     error ExceedsMaxSupply();
     error InvalidAffiliateID();
@@ -357,14 +356,10 @@ contract Campaign is Initializable, ERC1155Upgradeable, OwnableUpgradeable {
     }
 
     /// @notice Verifies if a user is eligible to claim tokens for a specific tokenId
-    /// @param _claimer Address of the user attempting to claim tokens
     /// @param _tokenId The token ID to claim
-    function verifyClaim(address _claimer, uint256 _tokenId) public view {
+    function verifyClaim(uint256 _tokenId) public view {
         if (!tokenData[_tokenId].exists) {
             revert TokenDoesNotExist();
-        }
-        if (balanceOf(_claimer, _tokenId) > 0) {
-            revert TokenAlreadyClaimed();
         }
         if (block.timestamp < tokenData[_tokenId].claimStart) {
             revert ClaimNotStarted();
@@ -386,7 +381,7 @@ contract Campaign is Initializable, ERC1155Upgradeable, OwnableUpgradeable {
             revert ExceedsMaxSupply();
         }
 
-        verifyClaim(msg.sender, _tokenId);
+        verifyClaim(_tokenId);
 
         if (affiliateAddress != address(0)) {
             if (!isAffiliate[affiliateAddress]) revert InvalidAffiliateAddress();

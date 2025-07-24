@@ -48,8 +48,8 @@ async function main() {
 
     // Campaign parameters - customize these as needed
     const campaignData = {
-      contractURI: "ipfs://bafkreicn6nroaqszai7jwbpdnt75gvnjrcrd4mbraxz6wseutcmsk6fodi", // Brand metadata
-      initialCampaignURI: "ipfs://bafybeid4djduj36xsco6ic4pit3lvk2m73cuz3cd3rxgzr6jsepvsot7yu", // Campaign metadata
+      contractURI: "ipfs://QmXFxZKQzMj6qjQoxQL1Xg7FuAiJJ9ZgrZCjRDN8a7y1Zx", // Brand metadata
+      initialCampaignURI: "ipfs://QmX5sMEfciBRxMUbW7yy6EQfiv4tECXTcAFXXLLX45KpkY", // Campaign metadata
       totalBudgetInCredits: 10000, // Total budget in credits
       minCreditsPerParticipant: 100, // Minimum credits per participant
       expirationTimestamp: Math.floor(Date.now() / 1000) + (30 * 24 * 60 * 60) // 30 days from now

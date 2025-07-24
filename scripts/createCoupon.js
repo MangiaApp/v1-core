@@ -1,14 +1,14 @@
 const { ethers } = require("hardhat");
 const fs = require("fs");
 const path = require("path");
-const IPFSHelper = require("./ipfsHelper");
+
 
 async function main() {
   console.log("🚀 Starting project creation with real metadata uploaded to IPFS...");
 
   try {
     // Initialize IPFS helper
-    const ipfsHelper = new IPFSHelper();
+    // const ipfsHelper = new IPFSHelper();
     
     // Get network and signers
     const network = await ethers.provider.getNetwork();
@@ -22,37 +22,38 @@ async function main() {
     console.log(`Account balance: ${ethers.utils.formatEther(balance)} ETH`);
 
     // Use the new factory address
-    const factoryAddress = "0xfc61cC87944512ddAc9F39FD3214a04463b2DEb6";
+    const factoryAddress = "0x1084d6E7bFdbB6f0457F38E638432c38c20f1fFe";
     console.log(`Using factory address: ${factoryAddress}`);
 
     // Connect to the factory contract
-    const TokenFactory = await ethers.getContractFactory("TokenFactory");
+    const TokenFactory = await ethers.getContractFactory("ProjectFactory");
     const factory = TokenFactory.attach(factoryAddress);
 
     // Generate a random salt
     const salt = ethers.utils.randomBytes(32);
 
-    // Generate project metadata following the schema
-    console.log("\n📊 Generating project metadata...");
-    const projectMetadata = ipfsHelper.generateProjectMetadata();
-    console.log(`Generated project: ${projectMetadata.name} in ${projectMetadata.city}, ${projectMetadata.country}`);
-
-    // Upload project metadata to IPFS
-    const projectMetadataURI = await ipfsHelper.uploadJSON(
-      projectMetadata, 
-      `project-${projectMetadata.name.replace(/\s+/g, '-').toLowerCase()}.json`
-    );
-
-    // Generate first coupon metadata following the schema
-    console.log("\n🎫 Generating first coupon metadata...");
-    const firstCouponMetadata = ipfsHelper.generateCouponMetadata();
-    console.log(`Generated coupon: ${firstCouponMetadata.name} - ${firstCouponMetadata.description}`);
-
-    // Upload first coupon metadata to IPFS
-    const firstCouponUri = await ipfsHelper.uploadJSON(
-      firstCouponMetadata,
-      `coupon-${firstCouponMetadata.name.replace(/\s+/g, '-').toLowerCase()}.json`
-    );
+    // Use default metadata URIs
+    console.log("\n📊 Using default project metadata...");
+    const projectMetadataURI = "ipfs://QmXFxZKQzMj6qjQoxQL1Xg7FuAiJJ9ZgrZCjRDN8a7y1Zx"; // Brand metadata
+    
+    console.log("\n🎫 Using default coupon metadata...");
+    const firstCouponUri = "ipfs://QmX5sMEfciBRxMUbW7yy6EQfiv4tECXTcAFXXLLX45KpkY"; // Campaign metadata
+    
+    // For display purposes, create mock metadata objects
+    const projectMetadata = {
+      name: "Default Project",
+      description: "Default project using preset metadata",
+      city: "Default City",
+      country: "Default Country",
+      category: "Default Category"
+    };
+    
+    const firstCouponMetadata = {
+      name: "Default Coupon",
+      description: "Default coupon using preset metadata",
+      visibility: "public",
+      attributes: []
+    };
 
     // Project parameters with realistic values
     const now = Math.floor(Date.now() / 1000);

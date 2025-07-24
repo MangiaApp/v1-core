@@ -1,14 +1,14 @@
 import { buildModule } from '@nomicfoundation/hardhat-ignition/modules';
 
 const TokenFactoryModule = buildModule('TokenFactoryModule', (m) => {
-  // First deploy the Coupon implementation contract
-  const couponImpl = m.contract('Coupon');
+  // First deploy the Campaign implementation contract
+  const campaignImpl = m.contract('Campaign');
 
-  // Deploy the TokenFactory with the Coupon implementation address
-  const tokenFactory = m.contract('TokenFactory', [couponImpl]);
+  // Deploy the ProjectFactory with the Campaign implementation address
+  const projectFactory = m.contract('ProjectFactory', [campaignImpl]);
 
   // Return both deployed contracts
-  return { couponImpl, tokenFactory };
+  return { campaignImpl, projectFactory };
 });
 
 export default TokenFactoryModule;

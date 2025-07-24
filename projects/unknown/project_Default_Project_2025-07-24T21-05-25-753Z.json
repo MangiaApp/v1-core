@@ -1,0 +1,34 @@
+{
+  "contractAddress": "0x4cA21d4A03b7d538dB50F645a039CE219a8d2261",
+  "deploymentBlock": 33300887,
+  "deploymentTimestamp": "2025-07-24T21:05:25.753Z",
+  "creator": "0x181fca4a238c21499F62364755f9b271c572e53b",
+  "transactionHash": "0x768efd75156d15a90acb486fae359894e7f9133c691a8f4c53ddadc25f183a28",
+  "projectMetadata": {
+    "name": "Default Project",
+    "description": "Default project using preset metadata",
+    "city": "Default City",
+    "country": "Default Country",
+    "category": "Default Category"
+  },
+  "projectMetadataURI": "ipfs://QmbjEkCGyrs4ZdnaDme7A9WqfuWwDphiFbYQPwpUcH7st8",
+  "firstCoupon": {
+    "tokenId": 0,
+    "metadata": {
+      "name": "Default Coupon",
+      "description": "Default coupon using preset metadata",
+      "visibility": "public",
+      "attributes": []
+    },
+    "metadataURI": "ipfs://QmPgkbL7bgB6vNwtzYj4ZGWop6wvSSBvaPQmTVzpUtrRFP",
+    "maxSupply": 188,
+    "claimStart": 1753391119,
+    "claimEnd": 1755983119,
+    "redeemExpiration": 1761167119,
+    "fee": 0,
+    "lockedBudget": "0"
+  },
+  "factory": "0x1084d6E7bFdbB6f0457F38E638432c38c20f1fFe",
+  "currencyAddress": "0x0000000000000000000000000000000000000000",
+  "salt": "0xfa22d695ea1d8bff527b5bfc0a6f92240dbf99221c1049ac87e8364057c22b8c"
+}

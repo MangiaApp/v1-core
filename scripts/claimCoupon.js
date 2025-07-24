@@ -23,13 +23,13 @@ async function main() {
     console.log(`Funding account balance: ${ethers.utils.formatEther(fundingBalance)} ETH`);
 
     // Project contract address (use the newly created project)
-    const projectAddress = "0x9ED89735e67Ef546Eb22f5B69767edD6a65ACbDB";
+    const projectAddress = "0x1ee75f42da76b1fa56bce7658f99e6916b2ef8fd";
     const tokenId = 0; // Claiming tokenId 0 (first coupon in the project)
     console.log(`Project contract address: ${projectAddress}`);
     console.log(`Token ID to claim: ${tokenId}`);
 
     // Connect to the project contract
-    const Coupon = await ethers.getContractFactory("Coupon");
+    const Coupon = await ethers.getContractFactory("Campaign");
     const project = Coupon.attach(projectAddress);
 
     // Get project information
